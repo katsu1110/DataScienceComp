@@ -9,14 +9,15 @@ import matplotlib.style as style
 from matplotlib_venn import venn2
 import seaborn as sns
 from matplotlib import pyplot
+from matplotlib.ticker import ScalarFormatter
 import plotly.figure_factory as ff
 import plotly.express as px
 import missingno as msno
 
 sns.set_context("talk")
-sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
+# sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
 style.use('fivethirtyeight')
-plt.rcParams.update({'font.size': 13})
+# plt.rcParams.update({'font.size': 13})
     
 # for dense featuers
 class DenseVisualizer():
@@ -51,7 +52,7 @@ class DenseVisualizer():
         for c in columns:
             chk[c] = np.nan
         for i, f in enumerate(self.features):
-            print("feature name = " + f + ", dtype = " + self.train[f].dtype)
+            print("feature name = " + f)
             # descriptive stats
             chk.loc[i, "train_min"] = np.nanmin(self.train[f].values)
             chk.loc[i, "test_min"] = np.nanmin(self.test[f].values)
@@ -80,7 +81,7 @@ class DenseVisualizer():
         plot histogram for each dense feature    
         """
         nrow, ncol = row_col(len(self.features))
-        fig, ax = plt.subplots(nrow, ncol, figsize=(7 * ncol, 5 * nrow))
+        fig, ax = plt.subplots(nrow, ncol, figsize=(6 * ncol, 4 * nrow))
         ax = ax.flatten()
         for i, f in enumerate(self.features):
             ax[i].hist(self.train.loc[self.train[f].isna().values == False, f], color="k", alpha=0.5)
@@ -88,6 +89,8 @@ class DenseVisualizer():
             ax[i].axvline(np.nanmean(self.train[f].values), color="k", label="train")
             ax[i].axvline(np.nanmean(self.test[f].values), color="r", label="test")
             ax[i].legend(frameon=False)
+            ax[i].yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+            ax[i].ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
             ax[i].set_title(f)
         for a in ax[len(self.features):]:
             a.axis("off")
@@ -99,10 +102,12 @@ class DenseVisualizer():
         plot vs target for each dense feature    
         """
         nrow, ncol = row_col(len(self.features))
-        fig, ax = plt.subplots(nrow, ncol, figsize=(7 * ncol, 5 * nrow))
+        fig, ax = plt.subplots(nrow, ncol, figsize=(6 * ncol, 4 * nrow))
         ax = ax.flatten()
         for i, f in enumerate(self.features):
             sns.regplot(x=f, y=self.target, data=self.train, ax=ax[i])
+            ax[i].yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+            ax[i].ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
         for a in ax[len(self.features):]:
             a.axis("off")
         plt.tight_layout()

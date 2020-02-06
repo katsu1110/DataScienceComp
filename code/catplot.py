@@ -9,14 +9,15 @@ import matplotlib.style as style
 from matplotlib_venn import venn2
 import seaborn as sns
 from matplotlib import pyplot
+from matplotlib.ticker import ScalarFormatter
 import plotly.figure_factory as ff
 import plotly.express as px
 import missingno as msno
 
 sns.set_context("talk")
-sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
+# sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
 style.use('fivethirtyeight')
-plt.rcParams.update({'font.size': 13})
+# plt.rcParams.update({'font.size': 13})
     
  # for categorical features
 class CategoricalVisualizer():
@@ -48,18 +49,18 @@ class CategoricalVisualizer():
         for c in columns:
             chk[c] = np.nan
         for i, f in enumerate(self.features):
-            print("feature name = " + f + ", dtype = " + self.train[f].dtype)
+            print("feature name = " + f)
 
-        # overlap between train & test
-        chk.loc[i, "overlap"] = len(set(self.train[f].values.tolist() + self.test[f].values.tolist())) / self.train[f].nunique()
+            # overlap between train & test
+            chk.loc[i, "overlap"] = len(set(self.train[f].values.tolist() + self.test[f].values.tolist())) / self.train[f].nunique()
 
-        # nans
-        chk.loc[i, "train_nans"] = self.train[f].isna().sum()
-        chk.loc[i, "test_nans"] = self.test[f].isna().sum()
+            # nans
+            chk.loc[i, "train_nans"] = self.train[f].isna().sum()
+            chk.loc[i, "test_nans"] = self.test[f].isna().sum()
 
-        # nuniques
-        chk.loc[i, "train_nunique"] = self.train[f].nunique()
-        chk.loc[i, "test_nunique"] = self.test[f].nunique()
+            # nuniques
+            chk.loc[i, "train_nunique"] = self.train[f].nunique()
+            chk.loc[i, "test_nunique"] = self.test[f].nunique()
 
         for c in ["train_nans", "test_nans", "train_nunique", "test_nunique"]:
             chk[c] = chk[c].astype(int)
@@ -73,29 +74,37 @@ class CategoricalVisualizer():
 
         # plot
         nrow, ncol = row_col(len(self.features))
-        fig, ax = plt.subplots(nrow, ncol, figsize=(7 * ncol, 5 * nrow))
+        fig, ax = plt.subplots(nrow, ncol, figsize=(6 * ncol, 4 * nrow))
         ax = ax.flatten()
         for i, f in enumerate(self.features):
             # count plot
             trainc = pd.DataFrame(self.train[f].value_counts()).reset_index()
             testc = pd.DataFrame(self.test[f].value_counts()).reset_index()
             cats = list(set(trainc["index"].values.tolist() + testc["index"].values.tolist()))
-            for c in cats:
+            for k, c in enumerate(cats):
                 if c in trainc["index"].values.tolist():
-                    ax[i].bar(np.arange(len(cats)) - 0.2, trainc.loc[trainc["index"] == c, f], color="k", width=0.2, alpha=0.5)
+                    ax[i].bar(k - 0.2, trainc.loc[trainc["index"] == c, f], color="k", width=0.2, alpha=1)
                 if c in testc["index"].values.tolist():
-                    ax[i].bar(np.arange(len(cats)), testc.loc[testc["index"] == c, f], color="r", width=0.2, alpha=0.5)
+                    ax[i].bar(k, testc.loc[testc["index"] == c, f], color="r", width=0.2, alpha=1)
             ax[i].set_title(f)
             ax[i].set_xticks(np.arange(len(cats)))
             ax[i].set_xticklabels(cats, rotation=45, ha="right")
+            ax[i].yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+            ax[i].ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
+            ax[i].set_ylabel("#")
             
             # target mean
             ax2 = ax[i].twinx()
+            me = np.nan * np.ones(len(cats))
+            sem = np.nan * np.ones(len(cats))
             for k, c in enumerate(cats):
                 if c in trainc["index"].values.tolist():
-                    me = np.nanmean(self.train.loc[self.train[f] == c, self.target].values)
-                    sem = np.nanstd(self.train.loc[self.train[f] == c, self.target].values) / np.sum(self.train[f] == c)
-                    ax2.errorbar(k, me, sem, marker='o', color="g", alpha=0.5)
+                    me[k] = np.nanmean(self.train.loc[self.train[f] == c, self.target].values)
+                    sem[k] = np.nanstd(self.train.loc[self.train[f] == c, self.target].values) / np.sum(self.train[f] == c)
+            ax2.errorbar(np.arange(len(cats)), me, sem, marker='o', color="g", alpha=1)
+            ax2.set_ylabel("target mean")
+            ax2.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+            ax2.ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
                     
         for a in ax[len(self.features):]:
             a.axis("off")
@@ -108,12 +117,12 @@ class CategoricalVisualizer():
         """
 
         # plot
-        nrow, ncol = row_col(self)
-        fig, ax = plt.subplots(nrow, ncol, figsize=(7 * ncol, 5 * nrow))
+        nrow, ncol = row_col(len(self.features))
+        fig, ax = plt.subplots(nrow, ncol, figsize=(6 * ncol, 4 * nrow))
         ax = ax.flatten()
         for i, f in enumerate(self.features):
-            a = train[f].values.tolist()
-            b = test[f].values.tolist()
+            a = self.train[f].values.tolist()
+            b = self.test[f].values.tolist()
             venn2([set(a), set(b)], set_labels = ('train', 'test'), ax=ax[i])
-            plt.title(feature)
+            ax[i].set_title(f)
         plt.tight_layout()
