@@ -1,16 +1,18 @@
-import os
-
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
 
-from base import Base_Model
+from base_regressor import RegressorBase
 
-class Lgb_Model(Base_Model):
+class LgbRegressor(RegressorBase):
+    """
+    LGB regressor wrapper
+    
+    """
     
     def train_model(self, train_set, val_set):
         verbosity = 100 if self.verbose else 0
-        model = lgb.train(self.params, train_set, num_boost_round = 10000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
+        model = lgb.train(self.params, train_set, num_boost_round = 3000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
         fi = model.feature_importance(importance_type="gain")
         return model, fi
         
@@ -20,13 +22,14 @@ class Lgb_Model(Base_Model):
         return train_set, val_set
         
     def get_params(self):
-        params = {'n_estimators': 1024,
+        params = {
+                    'n_estimators': 1024,
                     'boosting_type': 'gbdt',
                     'objective': 'regression',
                     'metric': 'rmse',
                     'subsample': 0.75,
                     'subsample_freq': 1,
-                    'learning_rate': 0.01,
+                    'learning_rate': 0.07,
                     'feature_fraction': 0.9,
                     'max_depth': 15,
                     'lambda_l1': 1,  

@@ -1,13 +1,14 @@
-import os
-
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor
 
-from base import Base_Model
+from base_regressor import RegressorBase
 
-class Catb_Model(Base_Model):
-
+class CatbRegressor(RegressorBase):
+     """
+    CatBoost regressor wrapper
+    
+    """
     def train_model(self, train_set, val_set):
         verbosity = 100 if self.verbose else 0
         clf = CatBoostRegressor(**self.params)
