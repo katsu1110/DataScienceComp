@@ -60,25 +60,6 @@ def d_prime(train, test, feature):
     ts = test[feature].values
     return (np.nanmean(tr) - np.nanmean(ts)) / np.sqrt(0.5 * (np.nanvar(tr) + np.nanvar(ts)))
 
-def get_feature_importance(gbms, columns):
-    feature_importance = pd.DataFrame()
-    feature_importance["name"] = columns
-    feature_importance["importance"] = 0
-    for k, gbm in enumerate(gbms):
-        feature_importance["importance"] += gbm.feature_importance("gain").astype(np.float32)
-    feature_importance = feature_importance.sort_values(by = "importance", ascending = False)
-    return feature_importance
-
-def get_col_type(x_train):
-    continuous = []
-    categorical = []
-    for col in x_train.columns:
-        if "object" == str(x_train[col].dtype):
-            categorical.append(col)
-        else:
-            continuous.append(col)
-    return categorical, continuous
-
 import numpy as np
 import os
 import datetime

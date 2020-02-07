@@ -1,28 +1,32 @@
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, KFold
 import pandas as pd
-from tqdm import tqdm
+from sklearn.model_selection import StratifiedKFold, KFold
+from sklearn import preprocessing
 
-# Imputer
-def nan2onehot(df, features):
-    isnan_features = []
-    for f in features:
-        if df[f].isna().sum() > len(df) * 0.05:
-            df[f + "_isnan"] = np.zeros(len(df))
-            df.loc[(df[f].isna().values == True), f + "_isnan"] = 1
-            isnan_features.append(f + "_isnan")
-    return df, isnan_features
+# label encoding object features
+def label_encoding(x_train, x_test, cat_features):
+    """
+    label encoding object features
+    """
+    ttdf = pd.concat([x_train[cat_features], x_test[cat_features]], ignore_index=True)
+    for c in cat_features:
+        if ttdf[c].dtype == "object":
+            le = preprocessing.LabelEncoder()
+            ttdf[c] = le.fit_transform(ttdf[c].astype(str))
+    x_train[cat_features] = ttdf.loc[:x_train.shape[0], cat_features].reset_index(drop=True, inplace=False)
+    x_test[cat_features] = ttdf.loc[x_train.shape[0]:, cat_features].reset_index(drop=True, inplace=False)
+    return x_train, x_test
 
 def target_encoding(x_train, x_test, label_train, cols, suffix = "_te", num_fold = 5, smooth_param = 0.001, stratified = False):
-    # target encodingを行う関数
+    # performs target encoding
 
     # input:
-    # smooth_param : smoothingの強さを決める． あるカテゴリのサンプルが少ないときに，それを全体のラベルの平均値をpriorとして均す
-    
+    # smooth_param : strength of smoothing. If samples of a certain category is in short, use target mean as a prior
+
     x_train["label"] = label_train
-    label_average = np.average(label_train) ## 全体の平均値． smoothingに使う
+    label_average = np.average(label_train) ## overall mean for smoothing
     n_reg = len(x_train) * smooth_param
-    
+
     for col in cols:
         if num_fold > 1:
             if stratified:
@@ -39,13 +43,12 @@ def target_encoding(x_train, x_test, label_train, cols, suffix = "_te", num_fold
             dic = x_train.groupby(col)["label"].agg("mean").to_dict()
             x_train[col + "_te"] = x_train[col].map(dic)
         x_test[col + "_te"] = x_test[col].map(dic)
-        
+
     x_train = x_train.drop("label", axis = 1)
     return x_train, x_test
 
-
 def count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat = True):
-    if pre_concat: ##もしテストデータも用いてcountするなら
+    if pre_concat: ## if also with test data
         dic = pd.concat([x_train[col], x_test[col]]).value_counts().to_dict()
     else:
         dic = x_train[col].value_counts().to_dict()
@@ -53,16 +56,14 @@ def count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat = True):
     x_test[col + suffix] = x_test[col].map(dic)
     return x_train, x_test
 
-
-
-###########上の関数群を使ってencoding
+########### encoding examples ###########
 
 def preprocess(x_train, x_test, y_train, continuous, categoricals, drops):
-    
+
     ## target encoding
     x_train, x_test = target_encoding(x_train, x_test, y_train, categoricals, suffix = "_te", num_fold = 3, smooth_param = 0.01)
 #         x_train, x_test = count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat=True)
     x_train = x_train.drop(drops, axis = 1)
     x_test = x_test.drop(drops, axis = 1)
-        
+
     return x_train, x_test

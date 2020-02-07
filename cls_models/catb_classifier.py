@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-from catboost import CatBoostRegressor
+from catboost import CatBoostClassifier
 
-from base_regressor import RegressorBase
+from base_classifier import ClassifierBase
 
-class CatbRegressor(RegressorBase):
+class CatbClassifier(ClassifierBase):
     """
     CatBoost regressor wrapper
 
@@ -22,7 +22,7 @@ class CatbRegressor(RegressorBase):
         return train_set, val_set
 
     def get_params(self):
-        params = {'loss_function': 'RMSE',
+        params = {'loss_function': 'Logloss',
                    'task_type': "CPU",
                    'iterations': 2000,
                    'od_type': "Iter",
