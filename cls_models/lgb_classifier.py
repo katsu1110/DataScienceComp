@@ -4,7 +4,7 @@ import lightgbm as lgb
 
 from base_classifier import ClassifierBase
 
-class LgbClassifier(RegressorBase):
+class LgbClassifier(ClassifierBase):
     """
     LGB regressor wrapper
 

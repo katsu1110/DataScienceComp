@@ -6,7 +6,7 @@ import matplotlib.style as style
 import seaborn as sns
 from matplotlib import pyplot
 
-from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 class ClassifierBase(object):
@@ -41,7 +41,7 @@ class ClassifierBase(object):
         return x
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
-        return accuracy_score(y_true, y_pred)
+        return roc_auc_score(y_true, y_pred)
 
     def get_cv(self):
         if self.cv_method == "KFold":
@@ -50,6 +50,9 @@ class ClassifierBase(object):
         elif self.cv_method == "StratifiedKFold":
             cv = StratifiedKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
             return cv.split(self.train_df, self.train_df[self.target])
+        elif self.cv_method == "TimeSeriesSplit":
+            cv = TimeSeriesSplit(max_train_size=None, n_splits=self.n_splits)
+            return cv.split(self.train_df)
         elif self.cv_method == "GroupKFold":
             return None
 
@@ -102,7 +105,9 @@ class ClassifierBase(object):
                 oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
                 x_test = self.convert_x(self.test_df[self.features])
                 y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
-                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], oof_pred[val_idx])))
+#                 print(y_vals[val_idx])
+#                 print(oof_pred[val_idx])
+                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_val, oof_pred[val_idx])))
 
         # feature importance data frame
         fi_df = pd.DataFrame()
