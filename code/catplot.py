@@ -18,7 +18,7 @@ sns.set_context("talk")
 # sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
 style.use('fivethirtyeight')
 # plt.rcParams.update({'font.size': 13})
-    
+
  # for categorical features
 class CategoricalVisualizer():
     def __init__(self, train, test, features, target):
@@ -36,7 +36,7 @@ class CategoricalVisualizer():
            test ... test (pandas dataframe)
            features ... categorical features in train & test
 
-        OUTPUT: chk ... pandas dataframe where columns are 
+        OUTPUT: chk ... pandas dataframe where columns are
         "overlap", "train_nans", "test_nans", "train_nunique", "test_nunique"
 
         '''
@@ -52,7 +52,7 @@ class CategoricalVisualizer():
             print("feature name = " + f)
 
             # overlap between train & test
-            chk.loc[i, "overlap"] = len(set(self.train[f].values.tolist() + self.test[f].values.tolist())) / self.train[f].nunique()
+            chk.loc[i, "overlap"] = self.train[f].nunique() / len(set(self.train[f].values.tolist() + self.test[f].values.tolist()))
 
             # nans
             chk.loc[i, "train_nans"] = self.train[f].isna().sum()
@@ -69,7 +69,7 @@ class CategoricalVisualizer():
     # barplot for categoricals
     def plot_bars(self):
         """
-        plot vs target for each categorical feature with a count plot  
+        plot vs target for each categorical feature with a count plot
         """
 
         # plot
@@ -92,7 +92,7 @@ class CategoricalVisualizer():
             ax[i].yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
             ax[i].ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
             ax[i].set_ylabel("#")
-            
+
             # target mean
             ax2 = ax[i].twinx()
             me = np.nan * np.ones(len(cats))
@@ -105,7 +105,7 @@ class CategoricalVisualizer():
             ax2.set_ylabel("target mean")
             ax2.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
             ax2.ticklabel_format(style="sci",  axis="y",scilimits=(0,0))
-                    
+
         for a in ax[len(self.features):]:
             a.axis("off")
         plt.tight_layout()

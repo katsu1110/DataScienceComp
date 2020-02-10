@@ -1,6 +1,22 @@
 import numpy as np
 import pandas as pd
 
+# categorize features into dense or categorical
+def categorize_features(df, target, cat_threshold=12):
+    cat_features = []
+    dense_features = []
+    for f in df.columns.values.tolist():
+        if f != target:
+            if (df[f].dtype == "object") | (df[f].dtype == "bool") | (df[f].nunique() <= cat_threshold):
+                cat_features.append(f)
+            else:
+                dense_features.append(f)
+    features = dense_features + cat_features
+    print(f"There are {len(features)} features.")
+    print(f"There are {len(dense_features)} dense features.")
+    print(f"There are {len(cat_features)} categorical features.")
+    return features, dense_features, cat_features
+
 # one-hot encoding nan
 def nan2onehot(df, features):
     isnan_features = []

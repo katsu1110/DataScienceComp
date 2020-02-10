@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 
 class ClassifierBase(object):
     """
-    Base Regressor Class
+    Base Classifier Class
 
     """
 
