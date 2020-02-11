@@ -10,7 +10,7 @@ from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score, roc_auc_score
 
 # stacking
-class Stacking:
+class Stacking(object):
     """
     perform stacking ensemble
     - oof, ypred are (samples x models) numpy array

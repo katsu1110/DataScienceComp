@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-
+import os, sys
+mypath = os.getcwd()
+sys.path.append(mypath + '/code/')
+from cv_methods import GroupKFold, StratifiedGroupKFold
 import matplotlib.pyplot as plt
 import matplotlib.style as style
 import seaborn as sns
@@ -15,7 +18,7 @@ class RegressorBase(object):
 
     """
 
-    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3, cv_method="KFold", verbose=True):
+    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3, cv_method="KFold", group=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
@@ -23,6 +26,7 @@ class RegressorBase(object):
         self.n_splits = n_splits
         self.categoricals = categoricals
         self.cv_method = cv_method
+        self.group = group
         self.cv = self.get_cv()
         self.verbose = verbose
         self.params = self.get_params()
@@ -54,7 +58,11 @@ class RegressorBase(object):
             cv = TimeSeriesSplit(max_train_size=None, n_splits=self.n_splits)
             return cv.split(self.train_df)
         elif self.cv_method == "GroupKFold":
-            return None
+            cv = GroupKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            return cv.split(self.train_df, self.train_df[self.target], self.group)
+        elif self.cv_method == "StratifiedGroupKFold":
+            cv = StratifiedGroupKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            return cv.split(self.train_df, self.train_df[self.target], self.group)
 
     def fit(self):
         # initialize
@@ -63,49 +71,21 @@ class RegressorBase(object):
         y_pred = np.zeros((self.test_df.shape[0], ))
         fi = np.zeros((self.n_splits, len(self.features)))
 
-        # group KFold
-        if self.cv == None:
-            ids = "installation_id" # replace this with a proper id name in your dataset
-            kf = KFold(n_splits=self.n_splits, shuffle=True, random_state=71)
-            unique_ids = self.train_df[ids].unique()
-            for fold, (tr_group_idx, va_group_idx) in enumerate(kf.split(unique_ids)):
-                # split groups
-                tr_groups, va_groups = unique_ids[tr_group_idx], unique_ids[va_group_idx]
-                train_idx = self.train_df[ids].isin(tr_groups)
-                val_idx = self.train_df[ids].isin(va_groups)
+        for fold, (train_idx, val_idx) in enumerate(self.cv):
+            # train test split
+            x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
+            y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
 
-                # train test split
-                x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
-                y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
-
-                # fitting & get feature importance
-                train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
-                model, importance = self.train_model(train_set, val_set)
-                fi[fold, :] = importance
-                conv_x_val = self.convert_x(x_val)
-                y_vals[val_idx] = y_val
-                oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
-                x_test = self.convert_x(self.test_df[self.features])
-                y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
-                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_val, oof_pred[val_idx])))
-
-        # other than group KFold
-        else:
-            for fold, (train_idx, val_idx) in enumerate(self.cv):
-                # train test split
-                x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
-                y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
-
-                # fitting & get feature importance
-                train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
-                model, importance = self.train_model(train_set, val_set)
-                fi[fold, :] = importance
-                conv_x_val = self.convert_x(x_val)
-                y_vals[val_idx] = y_val
-                oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
-                x_test = self.convert_x(self.test_df[self.features])
-                y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
-                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], oof_pred[val_idx])))
+            # fitting & get feature importance
+            train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
+            model, importance = self.train_model(train_set, val_set)
+            fi[fold, :] = importance
+            conv_x_val = self.convert_x(x_val)
+            y_vals[val_idx] = y_val
+            oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
+            x_test = self.convert_x(self.test_df[self.features])
+            y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
+            print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], oof_pred[val_idx])))
 
         # feature importance data frame
         fi_df = pd.DataFrame()
