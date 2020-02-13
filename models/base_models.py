@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.style as style
 import seaborn as sns
 from matplotlib import pyplot
-
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error, mean_absolute_error
 
@@ -18,7 +18,8 @@ class BaseModel(object):
 
     """
 
-    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3, cv_method="KFold", group=None, task="regression", verbose=True):
+    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3,
+                cv_method="KFold", group=None, task="regression", scaler=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
@@ -28,6 +29,7 @@ class BaseModel(object):
         self.cv_method = cv_method
         self.group = group
         self.task = task
+        self.scaler = scaler
         self.cv = self.get_cv()
         self.verbose = verbose
         self.params = self.get_params()
@@ -79,19 +81,41 @@ class BaseModel(object):
             if self.group in self.categoricals:
                 self.categoricals.remove(self.group)
         fi = np.zeros((self.n_splits, len(self.features)))
+
+        # scaling, if necessary
+        if self.scaler is not None:
+            numerical_features = [f for f in features if f not in self.categoricals]
+            if self.scaler == "MinMax":
+                scaler = MinMaxScaler()
+            elif self.scaler == "Standard":
+                scaler = StandardScaler()
+            df = pd.concat([self.train[numerical_features], self.test[numerical_features]], ignore_index=True)
+            scaler.fit(df[numerical_features])
+            x_test = self.test_df.copy()
+            x_test[numerical_features] = scaler.transform(x_test[numerical_features])
+            x_test = [np.absolute(x_test[i]) for i in self.categoricals] + [x_test[numerical_features]]
+        else:
+            x_test = self.test_df[self.features]
+
+        # fitting with out of fold
         for fold, (train_idx, val_idx) in enumerate(self.cv):
             # train test split
             x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
             y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
 
             # fitting & get feature importance
+            if self.scaler is not None:
+                x_train[numerical_features] = scaler.transform(x_train[numerical_features])
+                x_val[numerical_features] = scaler.transform(x_val[numerical_features])
+                x_train = [np.absolute(x_train[i]) for i in categoricals] + [x_train[numerical_features]]
+                x_val = [np.absolute(x_val[i]) for i in categoricals] + [x_val[numerical_features]]
             train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
             model, importance = self.train_model(train_set, val_set)
             fi[fold, :] = importance
             conv_x_val = self.convert_x(x_val)
             y_vals[val_idx] = y_val
             oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
-            x_test = self.convert_x(self.test_df[self.features])
+            x_test = self.convert_x(x_test)
             y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
             print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_val, oof_pred[val_idx])))
 
