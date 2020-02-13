@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 
-from base_classifier import ClassifierBase
+from base_models import BaseModel
 
-class LgbClassifier(ClassifierBase):
+class LgbModel(BaseModel):
     """
-    LGB regressor wrapper
+    LGB wrapper
 
     """
 
@@ -25,8 +25,6 @@ class LgbClassifier(ClassifierBase):
         params = {
                     'n_estimators': 1024,
                     'boosting_type': 'gbdt',
-                    'objective': 'binary',
-                    'metric': 'auc',
                     'subsample': 0.75,
                     'subsample_freq': 1,
                     'learning_rate': 0.07,
@@ -36,4 +34,11 @@ class LgbClassifier(ClassifierBase):
                     'lambda_l2': 1,
                     'early_stopping_rounds': 100
                     }
+        if self.task == "regression":
+            params["objective"] = "regression"
+            params["metric"] = "rmse"
+        elif self.task == "classification":
+            params["objective"] = "binary"
+            params["metric"] = "auc"
+
         return params

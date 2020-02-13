@@ -10,15 +10,15 @@ import seaborn as sns
 from matplotlib import pyplot
 
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, roc_auc_score, mean_squared_error, mean_absolute_error
 
-class RegressorBase(object):
+class BaseModel(object):
     """
-    Base Regressor Class
+    Base Model Class
 
     """
 
-    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3, cv_method="KFold", group=None, verbose=True):
+    def __init__(self, train_df, test_df, target, features, categoricals=[], n_splits=3, cv_method="KFold", group=None, task="regression", verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
@@ -27,6 +27,7 @@ class RegressorBase(object):
         self.categoricals = categoricals
         self.cv_method = cv_method
         self.group = group
+        self.task = task
         self.cv = self.get_cv()
         self.verbose = verbose
         self.params = self.get_params()
@@ -45,7 +46,10 @@ class RegressorBase(object):
         return x
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
-        return np.sqrt(mean_squared_error(y_true, y_pred))
+        if self.task == "classification":
+            return roc_auc_score(y_true, y_pred)
+        elif self.task == "regression":
+            return np.sqrt(mean_squared_error(y_true, y_pred))
 
     def get_cv(self):
         if self.cv_method == "KFold":
@@ -69,8 +73,12 @@ class RegressorBase(object):
         oof_pred = np.zeros((self.train_df.shape[0], ))
         y_vals = np.zeros((self.train_df.shape[0], ))
         y_pred = np.zeros((self.test_df.shape[0], ))
+        if self.group is not None:
+            if self.group in self.features:
+                self.features.remove(self.group)
+            if self.group in self.categoricals:
+                self.categoricals.remove(self.group)
         fi = np.zeros((self.n_splits, len(self.features)))
-
         for fold, (train_idx, val_idx) in enumerate(self.cv):
             # train test split
             x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
@@ -85,7 +93,7 @@ class RegressorBase(object):
             oof_pred[val_idx] = model.predict(conv_x_val).reshape(oof_pred[val_idx].shape)
             x_test = self.convert_x(self.test_df[self.features])
             y_pred += model.predict(x_test).reshape(y_pred.shape) / self.n_splits
-            print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], oof_pred[val_idx])))
+            print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_val, oof_pred[val_idx])))
 
         # feature importance data frame
         fi_df = pd.DataFrame()
@@ -107,8 +115,9 @@ class RegressorBase(object):
     def plot_feature_importance(self, rank_range=[1, 50]):
         # plot
         fig, ax = plt.subplots(1, 1, figsize=(10, 20))
-        sns.barplot(data=self.fi_df.sort_values(by = "importance_mean", ascending=False).reset_index().iloc[self.n_splits * (rank_range[0]-1) : self.n_splits * rank_range[1]],
-                    x ="importance", y ="features", orient='h')
+        sorted_df = self.fi_df.sort_values(by = "importance_mean", ascending=False).reset_index().iloc[self.n_splits * (rank_range[0]-1) : self.n_splits * rank_range[1]]
+        sns.barplot(data=sorted_df, x ="importance", y ="features", orient='h')
         ax.set_xlabel("feature importance")
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+        return sorted_df
