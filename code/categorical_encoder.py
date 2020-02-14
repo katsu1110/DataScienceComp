@@ -8,14 +8,19 @@ def label_encoding(x_train, x_test, cat_features):
     """
     label encoding object features
     """
-    ttdf = pd.concat([x_train[cat_features], x_test[cat_features]], ignore_index=True)
+    to_remove = []
     for c in cat_features:
-        if ttdf[c].dtype == "object":
+        try:
+            # label encoding
             le = preprocessing.LabelEncoder()
-            ttdf[c] = le.fit_transform(ttdf[c].astype(str))
-    x_train[cat_features] = ttdf.loc[:x_train.shape[0], cat_features].reset_index(drop=True, inplace=False)
-    x_test[cat_features] = ttdf.loc[x_train.shape[0]:, cat_features].reset_index(drop=True, inplace=False)
-    return x_train, x_test
+            x_train[c] = le.fit_transform(x_train[c].astype(str))
+            x_test[c] = le.transform(x_test[c].astype(str))
+            x_train[c] = x_train[c].astype(int)
+            x_test[c] = x_test[c].astype(int)
+        except: # cannot label encode = new value in test
+            to_remove.append(c)
+    cat_features = [c for c in cat_features if c not in to_remove]
+    return x_train, x_test, cat_features
 
 def target_encoding(x_train, x_test, label_train, cols, suffix = "_te", num_fold = 5, smooth_param = 0.001, stratified = False):
     # performs target encoding
