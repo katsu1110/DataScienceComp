@@ -17,7 +17,7 @@ class CatbModel(BaseModel):
             model = CatBoostClassifier(**self.params)
         model.fit(train_set['X'], train_set['y'], eval_set=(val_set['X'], val_set['y']),
             verbose=verbosity, cat_features=self.categoricals)
-        return clf, clf.get_feature_importance()
+        return model, model.get_feature_importance()
 
     def convert_dataset(self, x_train, y_train, x_val, y_val):
         train_set = {'X': x_train, 'y': y_train}
