@@ -43,7 +43,7 @@ class LgbModel(BaseModel):
             params["metric"] = "rmse"
         elif self.task == "classification":
             params["objective"] = "binary"
-            params["metric"] = "auc"
+            params["metric"] = "binary_logloss"
         
         # Bayesian Optimization by Optuna
         if self.parameter_tuning == True:
