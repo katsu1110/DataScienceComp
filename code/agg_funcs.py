@@ -7,7 +7,7 @@ def num_unique(x):
     return len(set(x))
 
 def flatten_column(df):
-    df.columns = ["__".join(col).strip() for col in df.columns.values]
+    df.columns = [" ".join(col).strip() for col in df.columns.values]
     return df
 
 def quantile25(series):
