@@ -1,6 +1,7 @@
 /inputs
 *.DS_Store
 *.ipynb_checkpoints
-__pycache__.*
+__pycache__/
+catboost_info/
 *.csv
 *.pkl
