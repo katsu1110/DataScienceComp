@@ -82,7 +82,7 @@ class LgbModel(BaseModel):
 
             # run optimization
             study = optuna.create_study(direction='minimize')
-            study.optimize(objective, n_trials=100)
+            study.optimize(objective, n_trials=50)
 
             print('Number of finished trials: {}'.format(len(study.trials)))
             print('Best trial:')
