@@ -27,11 +27,6 @@ class CatbModel(BaseModel):
     def get_params(self):
         params = { 'task_type': "CPU",
                    'iterations': 1000,
-                   'od_type': "Iter",
-                   'depth': 10,
-                   'colsample_bylevel': 0.5,
-                   'early_stopping_rounds': 100,
-                   'l2_leaf_reg': 18,
                    'random_seed': 42,
                    'use_best_model': True
                     }
