@@ -1,7 +1,10 @@
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
-
+import optuna
+from optuna.visualization import plot_optimization_history
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error
 from base_models import BaseModel
 
 class LgbModel(BaseModel):
@@ -22,6 +25,7 @@ class LgbModel(BaseModel):
         return train_set, val_set
 
     def get_params(self):
+        # fast fit parameters
         params = {
                     'n_estimators': 1024,
                     'boosting_type': 'gbdt',
@@ -40,5 +44,60 @@ class LgbModel(BaseModel):
         elif self.task == "classification":
             params["objective"] = "binary"
             params["metric"] = "auc"
+        
+        # Bayesian Optimization by Optuna
+        if self.parameter_tuning == True:
+            # define objective function
+            def objective(trial):
+                # train, test split
+                train_x, test_x, train_y, test_y = train_test_split(self.train_df[self.features], 
+                                                                    self.train_df[self.target],
+                                                                    test_size=0.3, random_state=42)
+                dtrain = lgb.Dataset(train_x, train_y, categorical_feature=self.categoricals)
+                dtest = lgb.Dataset(test_x, test_y, categorical_feature=self.categoricals)
+
+                # parameters to be explored
+                hyperparams = {'num_leaves': trial.suggest_int('num_leaves', 24, 1024),
+                        'boosting_type': 'gbdt',
+                        'objective': params["objective"],
+                        'metric': params["metric"],
+                        'max_depth': trial.suggest_int('max_depth', 4, 16),
+                        'min_child_weight': trial.suggest_int('min_child_weight', 1, 20),
+                        'feature_fraction': trial.suggest_uniform('feature_fraction', 0.4, 1.0),
+                        'bagging_fraction': trial.suggest_uniform('bagging_fraction', 0.4, 1.0),
+                        'bagging_freq': trial.suggest_int('bagging_freq', 1, 7),
+                        'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
+                        'lambda_l1': trial.suggest_loguniform('lambda_l1', 1e-8, 10.0),
+                        'lambda_l2': trial.suggest_loguniform('lambda_l2', 1e-8, 10.0),
+                        'early_stopping_rounds': 100
+                        }
+
+                # LGB
+                model = lgb.train(hyperparams, dtrain, valid_sets=dtest, verbose_eval=500)
+                pred = model.predict(test_x)
+                if self.task == "classification":
+                    return log_loss(test_y, pred)
+                elif self.task == "regression":
+                    return np.sqrt(mean_squared_error(test_y, pred))
+
+            # run optimization
+            study = optuna.create_study(direction='minimize')
+            study.optimize(objective, n_trials=100)
+
+            print('Number of finished trials: {}'.format(len(study.trials)))
+            print('Best trial:')
+            trial = study.best_trial
+            print('  Value: {}'.format(trial.value))
+            print('  Params: ')
+            for key, value in trial.params.items():
+                print('    {}: {}'.format(key, value))
+
+            params = trial.params
+
+            # lower learning rate for better accuracy
+            params["learning_rate"] = 0.001
+
+            # plot history
+            plot_optimization_history(study)
 
         return params
