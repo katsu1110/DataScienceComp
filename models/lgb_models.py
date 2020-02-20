@@ -15,7 +15,7 @@ class LgbModel(BaseModel):
 
     def train_model(self, train_set, val_set):
         verbosity = 100 if self.verbose else 0
-        model = lgb.train(self.params, train_set, num_boost_round = 3000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
+        model = lgb.train(self.params, train_set, num_boost_round = 2000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
         fi = model.feature_importance(importance_type="gain")
         return model, fi
 
@@ -27,16 +27,17 @@ class LgbModel(BaseModel):
     def get_params(self):
         # fast fit parameters
         params = {
-                    'n_estimators': 1024,
+                    'n_estimators': 4000,
                     'boosting_type': 'gbdt',
+                    'min_data_in_leaf': 50,
+                    'max_depth': -1,
+                    'learning_rate': 0.07,
                     'subsample': 0.75,
                     'subsample_freq': 1,
-                    'learning_rate': 0.07,
                     'feature_fraction': 0.9,
-                    'max_depth': 15,
                     'lambda_l1': 1,
                     'lambda_l2': 1,
-                    'early_stopping_rounds': 100
+                    'early_stopping_rounds': 300
                     }
         if self.task == "regression":
             params["objective"] = "regression"

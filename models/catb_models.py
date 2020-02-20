@@ -26,6 +26,7 @@ class CatbModel(BaseModel):
 
     def get_params(self):
         params = { 'task_type': "CPU",
+                   'learning_rate': 0.02, 
                    'iterations': 1000,
                    'random_seed': 42,
                    'use_best_model': True
