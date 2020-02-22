@@ -13,6 +13,8 @@ def label_encoding(x_train, x_test, cat_features):
         try:
             # label encoding
             le = preprocessing.LabelEncoder()
+            x_train[c] = x_train[c].fillna("NaN")
+            x_test[c] = x_test[c].fillna("NaN")
             x_train[c] = le.fit_transform(x_train[c].astype(str))
             x_test[c] = le.transform(x_test[c].astype(str))
             x_train[c] = x_train[c].astype(int)
@@ -61,14 +63,14 @@ def count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat = True):
     x_test[col + suffix] = x_test[col].map(dic)
     return x_train, x_test
 
-########### encoding examples ###########
+# ########### encoding examples ###########
 
-def preprocess(x_train, x_test, y_train, continuous, categoricals, drops):
+# def preprocess(x_train, x_test, y_train, continuous, categoricals, drops):
 
-    ## target encoding
-    x_train, x_test = target_encoding(x_train, x_test, y_train, categoricals, suffix = "_te", num_fold = 3, smooth_param = 0.01)
-#         x_train, x_test = count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat=True)
-    x_train = x_train.drop(drops, axis = 1)
-    x_test = x_test.drop(drops, axis = 1)
+#     ## target encoding
+#     x_train, x_test = target_encoding(x_train, x_test, y_train, categoricals, suffix = "_te", num_fold = 3, smooth_param = 0.01)
+# #         x_train, x_test = count_encodiing(x_train, x_test, col, suffix = "_count", pre_concat=True)
+#     x_train = x_train.drop(drops, axis = 1)
+#     x_test = x_test.drop(drops, axis = 1)
 
-    return x_train, x_test
+#     return x_train, x_test

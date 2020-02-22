@@ -16,16 +16,17 @@ from keras.callbacks import *
 import tensorflow as tf
 import math
 
-# visualize
-import matplotlib.pyplot as plt
-import matplotlib.style as style
-import seaborn as sns
-from matplotlib import pyplot
-from matplotlib.ticker import ScalarFormatter
-sns.set_context("talk")
-style.use('fivethirtyeight')
+# # visualize
+# import matplotlib.pyplot as plt
+# import matplotlib.style as style
+# import seaborn as sns
+# from matplotlib import pyplot
+# from matplotlib.ticker import ScalarFormatter
+# sns.set_context("talk")
+# style.use('fivethirtyeight')
 
 # utils
+import os, sys
 mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
 from nn_utils import Mish, LayerNormalization, CyclicLR
@@ -39,11 +40,7 @@ class NeuralNetworkModel(BaseModel):
 
     """
 
-    def MLP(self):
-        """
-        yields (multi-output) MLP model (keras)
-        """
-
+    def train_model(self, train_set, val_set):
         # MLP model
         inputs = []
         embeddings = []
@@ -66,56 +63,64 @@ class NeuralNetworkModel(BaseModel):
             x = Mish()(x)
             x = Dropout(self.params['hidden_dropout'])(x)
             x = LayerNormalization()(x)
-        out_reg = Dense(1, activation="linear", name = "out_reg")(x)
-        out_cls = Dense(1, activation='sigmoid', name = 'out_cls')(x)
-        model = Model(inputs=inputs, outputs=[out_reg, out_cls])
+        if self.task == "regression":
+            out = Dense(1, activation="linear", name = "out")(x)
+            loss = "mse"
+        elif self.task == "binary":
+            out = Dense(1, activation='sigmoid', name = 'out')(x)
+            loss = "binary_crossentropy"
+        elif self.task == "multiclass":
+            out = Dense(train_set['y'].nunique(), activation='softmax', name = 'out')(x)
+            loss = "categorical_crossentropy"
+        model = Model(inputs=inputs, outputs=out)
 
         # compile
-        model.compile(loss=['mse', 'binary_crossentropy'], loss_weights=[1, 1],
-                     optimizer=Adam(lr=1e-04, beta_1=0.9, beta_2=0.999, decay=1e-04))
-        return model
+        if self.params['optimizer']['type'] == 'adam':
+            model.compile(loss=loss, optimizer=Adam(lr=self.params['optimizer']['lr'], beta_1=0.9, beta_2=0.999, decay=1e-04))
+        elif self.params['optimizer']['type'] == 'sgd':
+            model.compile(loss=loss, optimizer=SGD(lr=self.params['optimizer']['lr'], decay=1e-6, momentum=0.9))
 
-    def train_model(self, train_set, val_set):
-        verbosity = 100 if self.verbose else 0
-        model = MLP(self)
+        # callbacks
         er = EarlyStopping(patience=10, min_delta=1e-4, restore_best_weights=True, monitor='val_loss')
-        # clr = CyclicLR(base_lr=2e-4, max_lr=8e-4, step_size = 1000, gamma = 0.99)
         ReduceLR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7, verbose=1, epsilon=1e-4, mode='min')
         history = model.fit(train_set['X'], train_set['y'], callbacks=[er, ReduceLR],
                             epochs=self.params['epochs'], batch_size=self.params['batch_size'],
                             validation_data=[val_set['X'], val_set['y']])
-        fi = PermulationImportance(model, train_set['X'], train_set['y'], self.features)
-        return history, fi
+
+        # permutation importance to get a feature importance (off in default)
+        # fi = PermulationImportance(model, train_set['X'], train_set['y'], self.features)
+        fi = np.zeros(len(self.features)) # no feature importance computed
+        return model, fi
 
     def convert_dataset(self, x_train, y_train, x_val, y_val):
         train_set = {'X': x_train, 'y': y_train}
         val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
-    def plot_loss(self):
-        # Plot training & validation loss values
-        plt.plot(history.history['loss'])
-        plt.plot(history.history['val_loss'])
-        plt.title('Model loss')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Test'], loc='upper left ')
-        plt.show()
+    # def plot_loss(self):
+    #     # Plot training & validation loss values
+    #     plt.plot(history.history['loss'])
+    #     plt.plot(history.history['val_loss'])
+    #     plt.title('Model loss')
+    #     plt.ylabel('Loss')
+    #     plt.xlabel('Epoch')
+    #     plt.legend(['Train', 'Test'], loc='upper left ')
+    #     plt.show()
 
     def get_params(self):
         """
-        for now stolen from https://github.com/ghmagazine/kagglebook/blob/master/ch06/ch06-03-hopt_nn.py
+        adapted from https://github.com/ghmagazine/kagglebook/blob/master/ch06/ch06-03-hopt_nn.py
         """
         params = {
             'input_dropout': 0.0,
-            'hidden_layers': 3,
+            'hidden_layers': 2,
             'hidden_units': 128,
-            'embedding_out_dim': 8,
-            'hidden_activation': 'relu',
+            'embedding_out_dim': 4,
+            # 'hidden_activation': 'relu', # use always mish
             'hidden_dropout': 0.05,
-            'batch_norm': 'before_act',
-            'optimizer': {'type': 'adam', 'lr': 0.001},
-            'batch_size': 128,
+            # 'batch_norm': 'before_act', # use always LayerNormalization
+            'optimizer': {'type': 'adam', 'lr': 1e-4},
+            'batch_size': 256,
             'epochs': 80
         }
 

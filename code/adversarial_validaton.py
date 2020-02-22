@@ -9,10 +9,11 @@ mypath = os.getcwd()
 sys.path.append(mypath + '/models/')
 from base_models import BaseModel
 from lgb_models import LgbModel
+from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score, log_loss, roc_auc_score
 
 from sklearn.model_selection import KFold, StratifiedKFold
 
-# stacking
+# adversarial validation
 class AdversarialValidation(object):
     """
     perform adversarial validation
@@ -31,12 +32,13 @@ class AdversarialValidation(object):
 
     def run(self):
         # train = 1, test = 0
-        df = pd.concat([self.train, self.test], ignore_index=True)
+        df = pd.concat([self.train[self.features], self.test[self.features]],
+                        ignore_index=True)
         df["is_train"] = 0
         df.loc[:self.train.shape[0], "is_train"] = 1
 
         # train, test split
-        kf = StratifiedKFold(n_splits=4, shuffle=True, random_state=71)
+        kf = StratifiedKFold(n_splits=4, shuffle=True, random_state=42)
         tr_idx, va_idx = list(kf.split(df, df["is_train"]))[0]
         train = df.loc[tr_idx, :].reset_index(drop=True, inplace=False)
         test = df.loc[va_idx, :].reset_index(drop=True, inplace=False)
@@ -46,7 +48,7 @@ class AdversarialValidation(object):
             cv_method = "GroupKFold"
         else:
             cv_method = "KFold"
-        cls = LgbModel(train, test, "is_train", self.features, categoricals=self.categoricals, task="classification",
+        cls = LgbModel(train, test, "is_train", self.features, categoricals=self.categoricals, task="binary",
             group=self.group, n_splits=self.n_splits, cv_method=cv_method)
 
         return cls

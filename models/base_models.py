@@ -14,13 +14,26 @@ from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_square
 
 class BaseModel(object):
     """
-    Base Model Class
+    Base Model Class:
 
+    train_df : train pandas dataframe
+    test_df : test pandas dataframe
+    target : target column name (str)
+    features : list of feature names
+    categoricals : list of categorical feature names
+    n_splits : K in KFold (default is 3)
+    cv_method : options are ... KFold, StratifiedKFold, TimeSeriesSplit, GroupKFold, StratifiedGroupKFold
+    group : group feature name when GroupKFold or StratifiedGroupKFold are used
+    task : options are ... regression, multiclass, or binary
+    parameter_tuning : bool, only for LGB
+    seed : seed (int)
+    scaler : options are ... None, MinMax, Standard
+    verbose : bool
     """
 
     def __init__(self, train_df, test_df, target, features, categoricals=[], 
                 n_splits=3, cv_method="KFold", group=None, task="regression", 
-                parameter_tuning=False, scaler=None, verbose=True):
+                parameter_tuning=False, seed=42, scaler=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
@@ -31,6 +44,7 @@ class BaseModel(object):
         self.group = group
         self.task = task
         self.parameter_tuning = parameter_tuning
+        self.seed = seed
         self.scaler = scaler
         self.cv = self.get_cv()
         self.verbose = verbose
@@ -50,26 +64,28 @@ class BaseModel(object):
         return x
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
-        if self.task == "classification":
+        if self.task == "multiclass":
+            return log_loss(y_true, y_pred)
+        elif self.task == "binary":
             return roc_auc_score(y_true, y_pred)
         elif self.task == "regression":
             return np.sqrt(mean_squared_error(y_true, y_pred))
 
     def get_cv(self):
         if self.cv_method == "KFold":
-            cv = KFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            cv = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df)
         elif self.cv_method == "StratifiedKFold":
-            cv = StratifiedKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            cv = StratifiedKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target])
         elif self.cv_method == "TimeSeriesSplit":
             cv = TimeSeriesSplit(max_train_size=None, n_splits=self.n_splits)
             return cv.split(self.train_df)
         elif self.cv_method == "GroupKFold":
-            cv = GroupKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            cv = GroupKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target], self.group)
         elif self.cv_method == "StratifiedGroupKFold":
-            cv = StratifiedGroupKFold(n_splits=self.n_splits, shuffle=True, random_state=42)
+            cv = StratifiedGroupKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target], self.group)
 
     def fit(self):
@@ -86,7 +102,14 @@ class BaseModel(object):
 
         # scaling, if necessary
         if self.scaler is not None:
+            # fill NaN
             numerical_features = [f for f in self.features if f not in self.categoricals]
+            self.train_df[numerical_features] = self.train_df[numerical_features].fillna(self.train_df[numerical_features].median())
+            self.test_df[numerical_features] = self.test_df[numerical_features].fillna(self.test_df[numerical_features].median())
+            self.train_df[self.categoricals] = self.train_df[self.categoricals].fillna(self.train_df[self.categoricals].mode().iloc[0])
+            self.test_df[self.categoricals] = self.test_df[self.categoricals].fillna(self.test_df[self.categoricals].mode().iloc[0])
+
+            # scaling
             if self.scaler == "MinMax":
                 scaler = MinMaxScaler()
             elif self.scaler == "Standard":

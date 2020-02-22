@@ -13,7 +13,7 @@ class CatbModel(BaseModel):
         verbosity = 100 if self.verbose else 0
         if self.task == "regression":
             model = CatBoostRegressor(**self.params)
-        elif self.task == "classification":
+        elif (self.task == "binary") | (self.task == "multiclass"):
             model = CatBoostClassifier(**self.params)
         model.fit(train_set['X'], train_set['y'], eval_set=(val_set['X'], val_set['y']),
             verbose=verbosity, cat_features=self.categoricals)
@@ -26,13 +26,13 @@ class CatbModel(BaseModel):
 
     def get_params(self):
         params = { 'task_type': "CPU",
-                   'learning_rate': 0.02, 
+                   'learning_rate': 0.03, 
                    'iterations': 1000,
-                   'random_seed': 42,
+                   'random_seed': self.seed,
                    'use_best_model': True
                     }
         if self.task == "regression":
             params["loss_function"] = "RMSE"
-        elif self.task == "classification":
+        elif (self.task == "binary") | (self.task == "multiclass"):
             params["loss_function"] = "Logloss"
         return params
