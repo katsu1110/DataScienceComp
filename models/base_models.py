@@ -156,7 +156,7 @@ class BaseModel(object):
         fi_df = fi_df.merge(gfi, on="features", how="left", suffixes=('', '_mean'))
 
         # outputs
-        loss_score = self.calc_metric(self.train_df[self.target], oof_pred)
+        loss_score = self.calc_metric(y_vals, oof_pred)
         if self.verbose:
             print('Our oof loss score is: ', loss_score)
         return y_pred, loss_score, model, oof_pred, y_vals, fi_df
