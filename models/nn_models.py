@@ -43,26 +43,37 @@ class NeuralNetworkModel(BaseModel):
     def train_model(self, train_set, val_set):
         # MLP model
         inputs = []
-        embeddings = []
-        embedding_out_dim = self.params['embedding_out_dim']
         n_neuron = self.params['hidden_units']
-        for i in self.categoricals:
-            input_ = Input(shape=(1,))
-            embedding = Embedding(int(np.absolute(self.train_df[i]).max() + 1), embedding_out_dim, input_length=1)(input_)
-            embedding = Reshape(target_shape=(embedding_out_dim,))(embedding)
-            inputs.append(input_)
-            embeddings.append(embedding)
-        input_numeric = Input(shape=(len(self.features) - len(self.categoricals),))
-        embedding_numeric = Dense(n_neuron)(input_numeric)
-        embedding_numeric = Mish()(embedding_numeric)
-        inputs.append(input_numeric)
-        embeddings.append(embedding_numeric)
-        x = Concatenate()(embeddings)
+        if len(self.categoricals) > 0:
+            embeddings = []
+            embedding_out_dim = self.params['embedding_out_dim']
+            for i in self.categoricals:
+                input_ = Input(shape=(1,))
+                embedding = Embedding(int(np.absolute(self.train_df[i]).max() + 1), embedding_out_dim, input_length=1)(input_)
+                embedding = Reshape(target_shape=(embedding_out_dim,))(embedding)
+                inputs.append(input_)
+                embeddings.append(embedding)
+            input_numeric = Input(shape=(len(self.features) - len(self.categoricals),))
+            embedding_numeric = Dense(n_neuron)(input_numeric)
+            embedding_numeric = Mish()(embedding_numeric)
+            inputs.append(input_numeric)
+            embeddings.append(embedding_numeric)
+            x = Concatenate()(embeddings)
+        else: # no categorical features
+            inputs = Input(shape=(len(self.features), ))
+            x = Dense(n_neuron)(inputs)
+            x = Mish()(x)
+            x = Dropout(self.params['hidden_dropout'])(x)
+            x = LayerNormalization()(x)
+            
+        # more layers
         for i in np.arange(self.params['hidden_layers'] - 1):
             x = Dense(n_neuron // (2 * (i+1)))(x)
             x = Mish()(x)
             x = Dropout(self.params['hidden_dropout'])(x)
             x = LayerNormalization()(x)
+        
+        # output
         if self.task == "regression":
             out = Dense(1, activation="linear", name = "out")(x)
             loss = "mse"
