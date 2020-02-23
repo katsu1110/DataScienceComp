@@ -61,7 +61,7 @@ class BaseModel(object):
         raise NotImplementedError
 
     def convert_x(self, x):
-        return x
+        raise NotImplementedError
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
         if self.task == "multiclass":

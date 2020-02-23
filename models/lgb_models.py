@@ -14,7 +14,7 @@ class LgbModel(BaseModel):
     """
 
     def train_model(self, train_set, val_set):
-        verbosity = 100 if self.verbose else 0
+        verbosity = 1000 if self.verbose else 0
         model = lgb.train(self.params, train_set, num_boost_round = 3000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
         fi = model.feature_importance(importance_type="gain")
         return model, fi
@@ -23,6 +23,9 @@ class LgbModel(BaseModel):
         train_set = lgb.Dataset(x_train, y_train, categorical_feature=self.categoricals)
         val_set = lgb.Dataset(x_val, y_val, categorical_feature=self.categoricals)
         return train_set, val_set
+
+    def convert_x(self, x):
+        return x
 
     def get_params(self):
         # fast fit parameters

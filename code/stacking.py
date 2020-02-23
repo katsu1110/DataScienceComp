@@ -56,14 +56,20 @@ class Stacking(object):
             if self.task == "regression":
                 mdl = linear_model.Ridge(**{'alpha': 220, 'solver': 'lsqr', 'fit_intercept': True,
                                       'max_iter': 5000, 'random_state': self.seed * (fold + 1)})
+                mdl.fit(X_train, y_train)
+                preds = mdl.predict(X_test)
             elif (self.task == "binary") | (self.task == "multiclass"):
                 mdl = linear_model.LogisticRegression(penalty='l2', tol=0.0001, C=1.0, fit_intercept=True, 
                                         random_state=self.seed * (fold + 1), solver='lbfgs', max_iter=5000, 
                                         multi_class='auto', verbose=0, warm_start=False)
-            mdl.fit(X_train, y_train)
-
+                mdl.fit(X_train, y_train)
+                preds = mdl.predict_proba(X_test)
+                if self.task == "binary":
+                    preds = preds[:, 1]
+                elif self.task == "multiclass":
+                    preds = np.argmax(preds, axis=1)
+            
             # store
-            preds = mdl.predict(X_test)
             models.append(mdl)
             score = self.calc_metric(y_test, preds)
             scores.append(score)

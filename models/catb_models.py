@@ -10,7 +10,7 @@ class CatbModel(BaseModel):
 
     """
     def train_model(self, train_set, val_set):
-        verbosity = 100 if self.verbose else 0
+        verbosity = 1000 if self.verbose else 0
         if self.task == "regression":
             model = CatBoostRegressor(**self.params)
         elif (self.task == "binary") | (self.task == "multiclass"):
@@ -24,12 +24,16 @@ class CatbModel(BaseModel):
         val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
+    def convert_x(self, x):
+        return x
+        
     def get_params(self):
         params = { 'task_type': "CPU",
                    'learning_rate': 0.03, 
-                   'iterations': 1000,
+                   'iterations': 5000,
                    'random_seed': self.seed,
-                   'use_best_model': True
+                   'use_best_model': True,
+                   'early_stopping_rounds': 100
                     }
         if self.task == "regression":
             params["loss_function"] = "RMSE"
