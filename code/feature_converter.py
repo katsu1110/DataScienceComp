@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import PowerTransformer
 
 # categorize features into dense or categorical
 def categorize_features(df, target, cat_threshold=12):
@@ -35,12 +36,12 @@ def clipper(df, features):
     return df
 
 # to normal dist
-def to_normal(df, features, method="yeo-johnson"):
+def to_normal(train, test, features, method="yeo-johnson"):
     # method can be box-cox
     pt = PowerTransformer(method=method)
-    pt.fit(df[features])
-    df[features] = pt.transform(df[features])
-    return df
+    train[features] = pt.fit_transform(train[features])
+    test[features] = pt.transform(test[features])
+    return train, test
 
 # remove correlated features
 def remove_correlated_features(df, features, threshold=0.999):
@@ -49,7 +50,7 @@ def remove_correlated_features(df, features, threshold=0.999):
     for feat_a in features:
         for feat_b in features:
             if feat_a != feat_b and feat_a not in to_remove and feat_b not in to_remove:
-                c = np.corrcoef(reduce_train[feat_a], reduce_train[feat_b])[0][1]
+                c = np.corrcoef(df[feat_a], df[feat_b])[0][1]
                 if c > threshold:
                     counter += 1
                     to_remove.append(feat_b)
