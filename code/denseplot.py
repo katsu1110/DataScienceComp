@@ -126,5 +126,7 @@ class DenseVisualizer():
         cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
         # Draw the heatmap with the mask and correct aspect ratio
-        sns.heatmap(corr, cmap=cmap, vmax=.3, center=0,
-                    square=True, linewidths=.5, cbar_kws={"shrink": .5})
+        sns.heatmap(corr, cmap=cmap, center=0, annot=True, 
+                    square=True, linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
+        ax.set_ylim(corr.shape[0], 0)
+        plt.yticks(rotation=0)
