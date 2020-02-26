@@ -35,12 +35,10 @@ class LgbModel(BaseModel):
                     'boosting_type': 'gbdt',
                     'min_data_in_leaf': 50,
                     'max_depth': -1,
-                    'learning_rate': 0.01,
+                    'learning_rate': 0.03,
                     'subsample': 0.75,
                     'subsample_freq': 1,
                     'feature_fraction': 0.9,
-                    'lambda_l1': 1,
-                    'lambda_l2': 1,
                     'seed': self.seed,
                     'early_stopping_rounds': 100
                     }

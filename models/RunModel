@@ -12,9 +12,9 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error
 
-class BaseModel(object):
+class RunModel(object):
     """
-    Base Model Class:
+    Model Fitting and Prediction Class:
 
     train_df : train pandas dataframe
     test_df : test pandas dataframe
@@ -31,23 +31,24 @@ class BaseModel(object):
     verbose : bool
     """
 
-    def __init__(self, train_df, test_df, target, features, categoricals=[], 
-                n_splits=3, cv_method="KFold", group=None, task="regression", 
-                parameter_tuning=False, seed=42, scaler=None, verbose=True):
+    def __init__(self, train_df, test_df, target, features, categoricals=[],
+                model="lgb", task="regression", n_splits=3, cv_method="KFold", 
+                group=None, parameter_tuning=False, seed=1220, scaler=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
         self.features = features
-        self.n_splits = n_splits
         self.categoricals = categoricals
+        self.model = model
+        self.task = task
+        self.n_splits = n_splits
         self.cv_method = cv_method
         self.group = group
-        self.task = task
         self.parameter_tuning = parameter_tuning
         self.seed = seed
         self.scaler = scaler
-        self.cv = self.get_cv()
         self.verbose = verbose
+        self.cv = self.get_cv()
         self.params = self.get_params()
         self.y_pred, self.score, self.model, self.oof, self.y_val, self.fi_df = self.fit()
 

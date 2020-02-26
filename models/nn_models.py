@@ -108,6 +108,9 @@ class NeuralNetworkModel(BaseModel):
         val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
+    def convert_x(self, x):
+        return x
+        
     # def plot_loss(self):
     #     # Plot training & validation loss values
     #     plt.plot(history.history['loss'])

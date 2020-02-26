@@ -1,0 +1,65 @@
+import numpy as np
+import pandas as pd
+
+# utils
+import os, sys
+from sklearn import linear_model
+mypath = os.getcwd()
+sys.path.append(mypath + '/code/')
+from permutation_importance import PermulationImportance
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
+from base_models import BaseModel
+
+class LinearModel(BaseModel):
+    """
+    Linear model wrapper
+
+    """
+
+    def train_model(self, train_set, val_set):
+        # model
+        if self.task == "regression":
+            # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
+            model = linear_model.Ridge(**{'alpha': 220, 'solver': 'lsqr', 'fit_intercept': self.params['fit_intercept'],
+                                    'max_iter': self.params['max_iter'], 'random_state': self.params['random_state']})
+        elif (self.task == "binary") | (self.task == "multiclass"):
+             # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+            model = linear_model.LogisticRegression(C=1.0, fit_intercept=self.params['fit_intercept'], class_weight='balanced',
+                                    random_state=self.params['random_state'], solver='lbfgs', max_iter=self.params['max_iter'], 
+                                    multi_class='auto', verbose=0, warm_start=False)
+        model.fit(train_set['X'], train_set['y'])
+
+        # permutation importance to get a feature importance (off in default)
+        # fi = PermulationImportance(model, train_set['X'], train_set['y'], self.features)
+        fi = np.zeros(len(self.features)) # no feature importance computed
+        return model, fi
+
+    def convert_dataset(self, x_train, y_train, x_val, y_val):
+        train_set = {'X': x_train, 'y': y_train}
+        val_set = {'X': x_val, 'y': y_val}
+        return train_set, val_set
+
+    def convert_x(self, x):
+        return x
+        
+    # def plot_loss(self):
+    #     # Plot training & validation loss values
+    #     plt.plot(history.history['loss'])
+    #     plt.plot(history.history['val_loss'])
+    #     plt.title('Model loss')
+    #     plt.ylabel('Loss')
+    #     plt.xlabel('Epoch')
+    #     plt.legend(['Train', 'Test'], loc='upper left ')
+    #     plt.show()
+
+    def get_params(self):
+        """
+        linear model hyperparameters
+        """
+        params = {
+            'max_iter': 5000,
+            'fit_intercept': True,
+            'random_state': self.seed
+        }
+
+        return params
