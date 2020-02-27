@@ -96,10 +96,13 @@ class RunModel(object):
             fi = model.feature_importance(importance_type="gain")
 
         elif self.model == "xgb": # xgb
-            model = xgb.train(self.params, train_set, 
-                         num_boost_round=2000, evals=[(train_set, 'train'), (val_set, 'val')], 
-                         verbose_eval=verbosity, early_stopping_rounds=100)
-            fi = np.asarray(list(model.get_score(importance_type='gain').values()))
+            if self.task == "regression":
+                model = xgb.XGBRegressor(**self.params)
+            elif (self.task == "binary") | (self.task == "multiclass"):
+                model = xgb.XGBClassifier(**self.params)
+            model.fit(train_set['X'], train_set['y'], eval_set=[(val_set['X'], val_set['y'])],
+                           early_stopping_rounds=100, verbose=verbosity)
+            fi = np.asarray(list(model.get_booster().get_score(importance_type='gain').values()))
 
         elif self.model == "catb": # catboost
             if self.task == "regression":
@@ -117,9 +120,9 @@ class RunModel(object):
                                         'max_iter': self.params['max_iter'], 'random_state': self.params['random_state']})
             elif (self.task == "binary") | (self.task == "multiclass"):
                 # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
-                model = linear_model.LogisticRegression(C=1.0, fit_intercept=self.params['fit_intercept'], class_weight='balanced',
-                                        random_state=self.params['random_state'], solver='lbfgs', max_iter=self.params['max_iter'], 
-                                        multi_class='auto', verbose=0, warm_start=False)
+                model = linear_model.LogisticRegression(**{"C": 1.0, "fit_intercept": self.params['fit_intercept'], 
+                                        "random_state": self.params['random_state'], "solver": "lbfgs", "max_iter": self.params['max_iter'], 
+                                        "multi_class": 'auto', "verbose":0, "warm_start":False})
             model.fit(train_set['X'], train_set['y'])
 
             # permutation importance to get a feature importance (off in default)
@@ -208,20 +211,20 @@ class RunModel(object):
             if self.task == "regression":
                 params["metric"] = "rmse"
             elif self.task == "binary":
-                params["metric"] = "auc" # binary_logloss
+                params["metric"] = "binary_logloss" # binary_logloss
             elif self.task == "multiclass":
                 params["metric"] = "multi_logloss" # cross_entropy, auc_mu
         elif self.model == "xgb":
             # list is here: https://xgboost.readthedocs.io/en/latest/parameter.html
             params = {
             'colsample_bytree': 0.8,                 
-            'learning_rate': 0.05,
+            'learning_rate': 0.07,
             'max_depth': 10,
             'subsample': 1,
             'min_child_weight':3,
             'gamma':0.25,
             'seed': self.seed,
-            'n_estimators':4000
+            'n_estimators':3000
             }
             if self.task == "regression":
                 params["objective"] = 'reg:squarederror'
@@ -270,25 +273,20 @@ class RunModel(object):
         if self.model == "lgb":
             train_set = lgb.Dataset(x_train, y_train, categorical_feature=self.categoricals)
             val_set = lgb.Dataset(x_val, y_val, categorical_feature=self.categoricals)
-        elif self.model == "xgb":
-            train_set = xgb.DMatrix(x_train, y_train)
-            val_set = xgb.DMatrix(x_val, y_val)
         else:
             train_set = {'X': x_train, 'y': y_train}
             val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
     def convert_x(self, x):
-        if self.model == "xgb":
-            return xgb.DMatrix(x)
-        else:
-            return x
+        return x
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
         if self.task == "multiclass":
             return log_loss(y_true, y_pred)
         elif self.task == "binary":
-            return roc_auc_score(y_true, y_pred)
+#             return roc_auc_score(y_true, y_pred)
+            return log_loss(y_true, y_pred)
         elif self.task == "regression":
             return np.sqrt(mean_squared_error(y_true, y_pred))
 
@@ -339,7 +337,10 @@ class RunModel(object):
             scaler.fit(df[numerical_features])
             x_test = self.test_df.copy()
             x_test[numerical_features] = scaler.transform(x_test[numerical_features])
-            x_test = [np.absolute(x_test[i]) for i in self.categoricals] + [x_test[numerical_features]]
+            if self.model == "nn":
+                x_test = [np.absolute(x_test[i]) for i in self.categoricals] + [x_test[numerical_features]]
+            else:
+                x_test = x_test[self.features]
         else:
             x_test = self.test_df[self.features]
 
@@ -353,8 +354,9 @@ class RunModel(object):
             if self.scaler is not None:
                 x_train[numerical_features] = scaler.transform(x_train[numerical_features])
                 x_val[numerical_features] = scaler.transform(x_val[numerical_features])
-                x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
-                x_val = [np.absolute(x_val[i]) for i in self.categoricals] + [x_val[numerical_features]]
+                if self.model == "nn":
+                    x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
+                    x_val = [np.absolute(x_val[i]) for i in self.categoricals] + [x_val[numerical_features]]
             train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
             model, importance = self.train_model(train_set, val_set)
             fi[fold, :] = importance
@@ -367,16 +369,19 @@ class RunModel(object):
             else:
                 oofs = model.predict(conv_x_val)
                 ypred = model.predict(x_test) / self.n_splits
-            try:
+                if (self.model == "nn") & (self.task != "multiclass"):
+                    oofs = oofs.ravel()
+                    ypred = ypred.ravel()
+            if len(oofs.shape) == 2:
                 if oofs.shape[1] == 2:
                     oof_pred[val_idx] = oofs[:, -1]
                     y_pred += ypred[:, -1]
                 elif oofs.shape[1] > 2:
                     oof_pred[val_idx] = np.argmax(oofs, axis=1)
                     y_pred += np.argmax(ypred, axis=1)
-            except:
+            else:
                 oof_pred[val_idx] = oofs.reshape(oof_pred[val_idx].shape)
-                y_pred += ypred
+                y_pred += ypred.reshape(y_pred.shape)
             print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_val, oof_pred[val_idx])))
 
         # feature importance data frame
