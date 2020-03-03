@@ -7,8 +7,7 @@ import pandas as pd
 # custom modeling functions
 mypath = os.getcwd()
 sys.path.append(mypath + '/models/')
-from base_models import BaseModel
-from lgb_models import LgbModel
+from RunModel import RunModel
 from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score, log_loss, roc_auc_score
 
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -48,7 +47,7 @@ class AdversarialValidation(object):
             cv_method = "GroupKFold"
         else:
             cv_method = "KFold"
-        cls = LgbModel(train, test, "is_train", self.features, categoricals=self.categoricals, task="binary",
-            group=self.group, n_splits=self.n_splits, cv_method=cv_method)
+        cls = RunModel(train, test, "is_train", self.features, categoricals=self.categoricals, task="binary",
+            model="lgb", group=self.group, n_splits=self.n_splits, cv_method=cv_method)
 
         return cls
