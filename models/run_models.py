@@ -199,7 +199,8 @@ class RunModel(object):
                         'n_estimators': 4000,
                         'objective': self.task,
                         'boosting_type': 'gbdt',
-                        'min_data_in_leaf': 50,
+                        'num_leaves': 128,
+                        'min_data_in_leaf': 64,
                         'max_depth': -1,
                         'learning_rate': 0.03,
                         'subsample': 0.75,
@@ -207,7 +208,7 @@ class RunModel(object):
                         'feature_fraction': 0.9,
                         'seed': self.seed,
                         'early_stopping_rounds': 100
-                        }            
+                        }    
             if self.task == "regression":
                 params["metric"] = "rmse"
             elif self.task == "binary":
