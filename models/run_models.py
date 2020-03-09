@@ -8,43 +8,28 @@ from matplotlib import pyplot
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error
-from sklearn import linear_model
-import xgboost as xgb
+
 import lightgbm as lgb
-from catboost import CatBoostRegressor, CatBoostClassifier
-import optuna
 
-# keras
-import keras
-from keras.layers import Dense
-from keras.models import Sequential
-from keras.callbacks import Callback, EarlyStopping, ReduceLROnPlateau, LambdaCallback
-from keras.optimizers import Adam, SGD
-from keras.models import Model
-from keras.layers import Input, Layer, Dense, Concatenate, Reshape, Dropout, merge, Add, BatchNormalization, GaussianNoise
-from keras.layers.embeddings import Embedding
-from keras import backend as K
-from keras.layers import Layer
-from keras.callbacks import *
-import tensorflow as tf
-import math
-
-# # visualize
-# import matplotlib.pyplot as plt
-# import matplotlib.style as style
-# import seaborn as sns
-# from matplotlib import pyplot
-# from matplotlib.ticker import ScalarFormatter
-# sns.set_context("talk")
-# style.use('fivethirtyeight')
+# visualize
+import matplotlib.pyplot as plt
+import matplotlib.style as style
+import seaborn as sns
+from matplotlib import pyplot
+from matplotlib.ticker import ScalarFormatter
+sns.set_context("talk")
+style.use('fivethirtyeight')
 
 # custom
+from lgb_param_models import lgb_model
+from xgb_param_models import xgb_model
+from catb_param_models import catb_model
+from lin_param_models import lin_model
+from nn_param_models import nn_model
 mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
-from train_helper import get_params, get_oof_ypred
+from train_helper import get_oof_ypred
 from cv_methods import GroupKFold, StratifiedGroupKFold
-from nn_utils import Mish, LayerNormalization, CyclicLR
-from permutation_importance import PermulationImportance
 
 class RunModel(object):
     """
@@ -67,7 +52,7 @@ class RunModel(object):
     """
 
     def __init__(self, train_df, test_df, target, features, categoricals=[],
-                model="lgb", task="regression", n_splits=3, cv_method="KFold", 
+                model="lgb", task="regression", n_splits=4, cv_method="KFold", 
                 group=None, parameter_tuning=False, seed=1220, scaler=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
@@ -87,114 +72,22 @@ class RunModel(object):
         self.y_pred, self.score, self.model, self.oof, self.y_val, self.fi_df = self.fit()
 
     def train_model(self, train_set, val_set):
-        # verbose
-        verbosity = 2000 if self.verbose else 0
-
-        # get hyperparameters
-        params = get_params(model=self.model, task=self.task, seed=self.seed)
 
         # compile model
         if self.model == "lgb": # LGB             
-            model = lgb.train(params, train_set, num_boost_round=2000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
-            fi = model.feature_importance(importance_type="gain")
+            model, fi = lgb_model(self, train_set, val_set)
 
         elif self.model == "xgb": # xgb
-            if self.task == "regression":
-                model = xgb.XGBRegressor(**params)
-            elif (self.task == "binary") | (self.task == "multiclass"):
-                model = xgb.XGBClassifier(**params)
-            model.fit(train_set['X'], train_set['y'], eval_set=[(val_set['X'], val_set['y'])],
-                           early_stopping_rounds=100, verbose=verbosity)
-            fi = np.asarray(list(model.get_booster().get_score(importance_type='gain').values()))
+            model, fi = xgb_model(self, train_set, val_set)
 
         elif self.model == "catb": # catboost
-            if self.task == "regression":
-                model = CatBoostRegressor(**params)
-            elif (self.task == "binary") | (self.task == "multiclass"):
-                model = CatBoostClassifier(**params)
-            model.fit(train_set['X'], train_set['y'], eval_set=(val_set['X'], val_set['y']),
-                verbose=verbosity, cat_features=self.categoricals)
-            fi = model.get_feature_importance()
+            model, fi = catb_model(self, train_set, val_set)
 
         elif self.model == "linear": # linear model
-            if self.task == "regression":
-                # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
-                model = linear_model.Ridge(**{'alpha': 220, 'solver': 'lsqr', 'fit_intercept': params['fit_intercept'],
-                                        'max_iter': params['max_iter'], 'random_state': params['random_state']})
-            elif (self.task == "binary") | (self.task == "multiclass"):
-                # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
-                model = linear_model.LogisticRegression(**{"C": 1.0, "fit_intercept": params['fit_intercept'], 
-                                        "random_state": params['random_state'], "solver": "lbfgs", "max_iter": params['max_iter'], 
-                                        "multi_class": 'auto', "verbose":0, "warm_start":False})
-            model.fit(train_set['X'], train_set['y'])
-
-            # permutation importance to get a feature importance (off in default)
-            # fi = PermulationImportance(model, train_set['X'], train_set['y'], self.features)
-            fi = np.zeros(len(self.features)) # no feature importance computed
+            model, fi = lin_model(self, train_set, val_set)
 
         elif self.model == "nn": # neural network
-            inputs = []
-            n_neuron = params['hidden_units']
-
-            # embedding for categorical features 
-            if len(self.categoricals) > 0:
-                embeddings = []
-                embedding_out_dim = params['embedding_out_dim']
-                for i in self.categoricals:
-                    input_ = Input(shape=(1,))
-                    embedding = Embedding(int(np.absolute(self.train_df[i]).max() + 1), embedding_out_dim, input_length=1)(input_)
-                    embedding = Reshape(target_shape=(embedding_out_dim,))(embedding)
-                    inputs.append(input_)
-                    embeddings.append(embedding)
-                input_numeric = Input(shape=(len(self.features) - len(self.categoricals),))
-                embedding_numeric = Dense(n_neuron)(input_numeric)
-                embedding_numeric = Mish()(embedding_numeric)
-                inputs.append(input_numeric)
-                embeddings.append(embedding_numeric)
-                x = Concatenate()(embeddings)
-
-            else: # no categorical features
-                inputs = Input(shape=(len(self.features), ))
-                x = Dense(n_neuron)(inputs)
-                x = Mish()(x)
-                x = Dropout(params['hidden_dropout'])(x)
-                x = LayerNormalization()(x)
-                
-            # more layers
-            for i in np.arange(params['hidden_layers'] - 1):
-                x = Dense(n_neuron // (2 * (i+1)))(x)
-                x = Mish()(x)
-                x = Dropout(params['hidden_dropout'])(x)
-                x = LayerNormalization()(x)
-            
-            # output
-            if self.task == "regression":
-                out = Dense(1, activation="linear", name = "out")(x)
-                loss = "mse"
-            elif self.task == "binary":
-                out = Dense(1, activation='sigmoid', name = 'out')(x)
-                loss = "binary_crossentropy"
-            elif self.task == "multiclass":
-                out = Dense(len(self.target), activation='softmax', name = 'out')(x)
-                loss = "categorical_crossentropy"
-            model = Model(inputs=inputs, outputs=out)
-
-            # compile
-            if params['optimizer']['type'] == 'adam':
-                model.compile(loss=loss, optimizer=Adam(lr=params['optimizer']['lr'], beta_1=0.9, beta_2=0.999, decay=1e-04))
-            elif params['optimizer']['type'] == 'sgd':
-                model.compile(loss=loss, optimizer=SGD(lr=params['optimizer']['lr'], decay=1e-6, momentum=0.9))
-
-            # callbacks
-            er = EarlyStopping(patience=10, min_delta=1e-4, restore_best_weights=True, monitor='val_loss')
-            ReduceLR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=7, verbose=1, epsilon=1e-4, mode='min')
-            history = model.fit(train_set['X'], train_set['y'], callbacks=[er, ReduceLR],
-                                epochs=params['epochs'], batch_size=params['batch_size'],
-                                validation_data=[val_set['X'], val_set['y']])
-
-            # permutation importance to get a feature importance (off in default)
-            # fi = PermulationImportance(model, train_set['X'], train_set['y'], self.features)
-            fi = np.zeros(len(self.features)) # no feature importance computed
+            model, fi = nn_model(self, train_set, val_set)
         
         return model, fi # fitted model and feature importance
 
