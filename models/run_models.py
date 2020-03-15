@@ -1,10 +1,6 @@
 import numpy as np
 import pandas as pd
 import os, sys
-import matplotlib.pyplot as plt
-import matplotlib.style as style
-import seaborn as sns
-from matplotlib import pyplot
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error
@@ -128,15 +124,9 @@ class RunModel(object):
 
     def fit(self):
         # initialize
-        if self.task == "multitask":
-            n_class = len(self.target)
-            oof_pred = np.zeros((self.train_df.shape[0], n_class))
-            y_vals = np.zeros((self.train_df.shape[0], n_class))
-            y_pred = np.zeros((self.test_df.shape[0], n_class))
-        else:
-            oof_pred = np.zeros((self.train_df.shape[0], ))
-            y_vals = np.zeros((self.train_df.shape[0], ))
-            y_pred = np.zeros((self.test_df.shape[0], ))
+        oof_pred = np.zeros((self.train_df.shape[0], ))
+        y_vals = np.zeros((self.train_df.shape[0], ))
+        y_pred = np.zeros((self.test_df.shape[0], ))
 
         # group does not kick in when group k fold is used
         if self.group is not None:

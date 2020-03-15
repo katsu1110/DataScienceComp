@@ -19,7 +19,7 @@ def get_oof_ypred(model, x_val, x_test, modelname="lgb", task="regression"):
                 oof_pred = oof_pred.ravel()
                 y_pred = y_pred.ravel()        
 
-    elif task == "multitask":
+    elif task == "multiclass":
         # sklearn API
         if modelname in ["xgb", "catb", "linear"]:
             oofs = model.predict_proba(x_val)
