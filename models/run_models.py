@@ -188,7 +188,7 @@ class RunModel(object):
             y_vals[val_idx] = y_val
 
             # predictions
-            oofs, ypred = get_oof_ypred(model, x_val, x_test, self.model, self.seed)
+            oofs, ypred = get_oof_ypred(model, x_val, x_test, self.model, self.task)
             oof_pred[val_idx] = oofs.reshape(oof_pred[val_idx].shape)
             y_pred += ypred.reshape(y_pred.shape) / self.n_splits
 

@@ -22,16 +22,16 @@ def get_oof_ypred(model, x_val, x_test, modelname="lgb", task="regression"):
     elif task == "multiclass":
         # sklearn API
         if modelname in ["xgb", "catb", "linear"]:
-            oofs = model.predict_proba(x_val)
-            ypred = model.predict_proba(x_test)
+            oof_pred = model.predict_proba(x_val)
+            y_pred = model.predict_proba(x_test)
         else:
-            oofs = model.predict(x_val)
-            ypred = model.predict(x_test)
+            oof_pred = model.predict(x_val)
+            y_pred = model.predict(x_test)
 
-        oof_pred = np.argmax(oofs, axis=1)
-        y_pred = np.argmax(ypred, axis=1)
+        oof_pred = np.argmax(oof_pred, axis=1)
+        y_pred = np.argmax(y_pred, axis=1)
 
-    else: # regression
+    elif task == "regression": # regression
         oof_pred = model.predict(x_val)
         y_pred = model.predict(x_test)
 
