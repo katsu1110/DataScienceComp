@@ -3,7 +3,7 @@ import pandas as pd
 import os, sys
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
-from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error
+from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error, f1_score
 
 import lightgbm as lgb
 
@@ -21,6 +21,7 @@ from lgb_param_models import lgb_model
 from xgb_param_models import xgb_model
 from catb_param_models import catb_model
 from lin_param_models import lin_model
+from knn_param_models import knn_model
 from nn_param_models import nn_model
 mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
@@ -83,6 +84,9 @@ class RunModel(object):
         elif self.model == "linear": # linear model
             model, fi = lin_model(self, train_set, val_set)
 
+        elif self.model == "knn": # knn model
+            model, fi = knn_model(self, train_set, val_set)
+
         elif self.model == "nn": # neural network
             model, fi = nn_model(self, train_set, val_set)
         
@@ -104,7 +108,7 @@ class RunModel(object):
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
         if self.task == "multiclass":
-            return log_loss(y_true, y_pred)
+            return f1_score(y_true, y_pred, average="macro")
         elif self.task == "binary":
             return roc_auc_score(y_true, y_pred) # log_loss
         elif self.task == "regression":
