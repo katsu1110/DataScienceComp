@@ -18,6 +18,7 @@ conda install -c conda-forge catboost
 conda install -c conda-forge keras
 pip install pyarrow
 conda install -c conda-forge missingno
+conda install -c anaconda statsmodels
 
 (Troubleshooting)
 ### package not in path
