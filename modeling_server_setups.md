@@ -7,6 +7,9 @@ https://tudip.com/blog-post/run-jupyter-notebook-on-google-cloud-platform/
 ### Cautions
 - better to choose CentOS (Ubuntu may be a bit troublesome)
 
+### linux related
+sudo apt install unzip
+
 ### install anaconda
 wget https://repo.continuum.io/archive/Anaconda3-2020.02-Linux-x86_64.sh
 bash Anaconda3-4.2.0-Linux-x86_64.sh
@@ -17,6 +20,7 @@ conda install -c conda-forge xgboost
 conda install -c conda-forge catboost
 conda install -c conda-forge keras
 pip install pyarrow
+conda install -c conda-forge optuna
 conda install -c conda-forge missingno
 conda install -c anaconda statsmodels
 

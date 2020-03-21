@@ -32,6 +32,7 @@ def lgb_model(cls, train_set, val_set):
         params["metric"] = "auc" # binary_logloss
     elif cls.task == "multiclass":
         params["metric"] = "multi_logloss" # cross_entropy, auc_mu
+        params["num_class"] = len(np.unique(cls.train_df[cls.target].values))
 
     # modeling
     model = lgb.train(params, train_set, num_boost_round=2000, valid_sets=[train_set, val_set], verbose_eval=verbosity)
