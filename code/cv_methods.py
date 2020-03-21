@@ -45,41 +45,46 @@ class StratifiedGroupKFold(object):
         return self.n_splits
 
     def split(self, X, y, group):
-        # Preparation
-        max_y = np.max(y)
+        labels_num = np.max(y) + 1
+        y_counts_per_group = defaultdict(lambda: np.zeros(labels_num))
+        y_distr = Counter()
         groups = X[group].values
-
-        # y counts per group
-        unique_num = np.max(y) + 1
-        y_counts_per_group = defaultdict(lambda: np.zeros(unique_num))
         for label, g in zip(y, groups):
             y_counts_per_group[g][label] += 1
-        kf = model_selection.GroupKFold(n_splits=self.n_splits)
+            y_distr[label] += 1
 
-        for train_idx, val_idx in kf.split(X, y, groups):
-            # Training dataset and validation dataset
-            id_train = X.loc[train_idx, group].unique()
-            x_val, y_val = X.loc[val_idx, :], y.iloc[val_idx]
-            id_val = x_val[group].unique()
+        y_counts_per_fold = defaultdict(lambda: np.zeros(labels_num))
+        groups_per_fold = defaultdict(set)
 
-            # y counts of training dataset and validation dataset
-            y_counts_train = np.zeros(max_y+1)
-            y_counts_val = np.zeros(max_y+1)
-            for id_ in id_train:
-                y_counts_train += y_counts_per_group[id_]
-            for id_ in id_val:
-                y_counts_val += y_counts_per_group[id_]
+        def eval_y_counts_per_fold(y_counts, fold):
+            y_counts_per_fold[fold] += y_counts
+            std_per_label = []
+            for label in range(labels_num):
+                label_std = np.std([y_counts_per_fold[i][label] / y_distr[label] for i in range(self.n_splits)])
+                std_per_label.append(label_std)
+            y_counts_per_fold[fold] -= y_counts
+            return np.mean(std_per_label)
+        
+        groups_and_y_counts = list(y_counts_per_group.items())
+        random.Random(self.random_state).shuffle(groups_and_y_counts)
 
-            # Determination ratio of validation dataset
-            numratio_train = y_counts_train / np.max(y_counts_train)
-            stratified_count = np.ceil(y_counts_val[np.argmax(y_counts_train)] * numratio_train)
-            stratified_count = stratified_count.astype(int)
+        for g, y_counts in sorted(groups_and_y_counts, key=lambda x: -np.std(x[1])):
+            best_fold = None
+            min_eval = None
+            for i in range(self.n_splits):
+                fold_eval = eval_y_counts_per_fold(y_counts, i)
+                if min_eval is None or fold_eval < min_eval:
+                    min_eval = fold_eval
+                    best_fold = i
+            y_counts_per_fold[best_fold] += y_counts
+            groups_per_fold[best_fold].add(g)
 
-            # Select validation dataset randomly
-            val_idx = np.array([])
-            np.random.seed(self.random_state) 
-            for num in range(max_y+1):
-                val_idx = np.append(val_idx, np.random.choice(y_val[y_val==num].index, stratified_count[num]))
-            val_idx = val_idx.astype(int)
-            
-            yield train_idx, val_idx
+        all_groups = set(groups)
+        for i in range(self.n_splits):
+            train_groups = all_groups - groups_per_fold[i]
+            test_groups = groups_per_fold[i]
+
+            train_idx = [i for i, g in enumerate(groups) if g in train_groups]
+            test_idx = [i for i, g in enumerate(groups) if g in test_groups]
+
+            yield train_idx, test_idx
