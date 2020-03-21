@@ -23,6 +23,7 @@ pip install pyarrow
 conda install -c conda-forge optuna
 conda install -c conda-forge missingno
 conda install -c anaconda statsmodels
+conda install -c anaconda astropy
 
 (Troubleshooting)
 ### package not in path

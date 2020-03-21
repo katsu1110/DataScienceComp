@@ -22,8 +22,12 @@ def catb_model(cls, train_set, val_set):
                 }
     if cls.task == "regression":
         params["loss_function"] = "RMSE"
-    elif (cls.task == "binary") | (cls.task == "multiclass"):
+    elif cls.task == "binary":
         params["loss_function"] = "Logloss"
+        params["eval_metric"] = "AUC"
+    elif cls.task == "multiclass":
+        params["loss_function"] = "MultiClass"
+        params["eval_metric"] = "TotalF1"
 
     # modeling
     if cls.task == "regression":
