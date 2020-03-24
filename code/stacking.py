@@ -31,7 +31,7 @@ class Stacking(object):
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
         if self.task == "multiclass":
-            return log_loss(y_true, y_pred)
+            return roc_auc_score(y_true, y_pred, average="macro")
         elif self.task == "binary":
             return roc_auc_score(y_true, y_pred)
         elif self.task == "regression":

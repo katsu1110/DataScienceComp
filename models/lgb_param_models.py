@@ -19,7 +19,7 @@ def lgb_model(cls, train_set, val_set):
                 'num_leaves': 128,
                 'min_data_in_leaf': 64,
                 'max_depth': -1,
-                'learning_rate': 0.04,
+                'learning_rate': 0.08,
                 'subsample': 0.76,
                 'subsample_freq': 1,
                 'feature_fraction': 0.2,
