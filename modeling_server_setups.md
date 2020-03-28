@@ -21,6 +21,9 @@ conda install -c conda-forge catboost
 conda install -c conda-forge keras
 pip install pyarrow
 conda install -c conda-forge optuna
+conda install -c conda-forge matplotlib-venn
+pip install waterfallcharts
+conda install -c plotly plotly
 conda install -c conda-forge missingno
 conda install -c anaconda statsmodels
 conda install -c anaconda astropy
