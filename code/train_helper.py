@@ -9,8 +9,10 @@ def get_oof_ypred(model, x_val, x_test, modelname="lgb", task="regression"):
     if task == "binary": # classification
         # sklearn API
         if modelname in sklearns:
-            oof_pred = model.predict_proba(x_val)[1]
-            y_pred = model.predict_proba(x_test)[1]
+            oof_pred = model.predict_proba(x_val)
+            y_pred = model.predict_proba(x_test)
+            oof_pred = oof_pred[:, 1]
+            y_pred = y_pred[:, 1]
         else:
             oof_pred = model.predict(x_val)
             y_pred = model.predict(x_test)
