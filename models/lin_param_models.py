@@ -25,8 +25,10 @@ def lin_model(cls, train_set, val_set):
                                 
     model.fit(train_set['X'], train_set['y'])
 
-    # permutation importance to get a feature importance (off in default)
-    # fi = PermulationImportance(model, train_set['X'], train_set['y'], cls.features)
-    fi = np.zeros(len(cls.features)) # no feature importance computed
+    # feature importance (for multitask, absolute value is computed for each feature)
+    if cls.task == "multiclass":
+        fi = np.mean(np.abs(model.coef_), axis=0).ravel()
+    else:
+        fi = model.coef_.ravel()
 
     return model, fi
