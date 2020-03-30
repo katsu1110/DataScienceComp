@@ -148,8 +148,10 @@ class RunModel(object):
 
         # scaling, if necessary
         if self.scaler is not None:
-            # fill NaN
+            # fill NaN (numerical features -> median, categorical features -> mode)
             numerical_features = [f for f in self.features if f not in self.categoricals]
+            self.train_df[numerical_features] = self.train_df[numerical_features].replace([np.inf, -np.inf], np.nan)
+            self.test_df[numerical_features] = self.test_df[numerical_features].replace([np.inf, -np.inf], np.nan)
             self.train_df[numerical_features] = self.train_df[numerical_features].fillna(self.train_df[numerical_features].median())
             self.test_df[numerical_features] = self.test_df[numerical_features].fillna(self.test_df[numerical_features].median())
             self.train_df[self.categoricals] = self.train_df[self.categoricals].fillna(self.train_df[self.categoricals].mode().iloc[0])
