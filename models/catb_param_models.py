@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from catboost import CatBoostRegressor, CatBoostClassifier
-import optuna
 
 def catb_model(cls, train_set, val_set):
     """

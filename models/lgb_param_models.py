@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
-import optuna
 
 def lgb_model(cls, train_set, val_set):
     """

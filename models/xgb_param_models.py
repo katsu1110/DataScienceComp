@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import operator
-import optuna
 
 def xgb_model(cls, train_set, val_set):
     """
