@@ -21,6 +21,7 @@ conda install -c conda-forge catboost
 conda install -c conda-forge keras
 conda install -c anaconda pytables
 pip install pyarrow
+conda install -c conda-forge imbalanced-learn
 conda install -c conda-forge optuna
 conda install -c conda-forge matplotlib-venn
 pip install waterfallcharts

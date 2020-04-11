@@ -6,6 +6,7 @@ import random
 from collections import Counter, defaultdict
 from sklearn import model_selection
 
+# ---- GroupKFold ----
 class GroupKFold(object):
     """
     GroupKFold with random shuffle with a sklearn-like structure
@@ -30,6 +31,7 @@ class GroupKFold(object):
             val_idx = np.where(X[group].isin(va_group))[0]
             yield train_idx, val_idx
 
+# ---- StratifiedGroupKFold ----
 class StratifiedGroupKFold(object):
     """
     StratifiedGroupKFold with random shuffle with a sklearn-like structure
@@ -88,3 +90,49 @@ class StratifiedGroupKFold(object):
             test_idx = [i for i, g in enumerate(groups) if g in test_groups]
 
             yield train_idx, test_idx
+
+# ---- KFold with Undersampling + Bagging ----
+from sklearn.model_selection import BaseCrossValidator
+from sklearn.model_selection import train_test_split
+from imblearn.under_sampling import RandomUnderSampler
+class UnderBaggingKFold(BaseCrossValidator):
+    """
+    KFold with undersampling + bagging 
+    Note that for each fold data with less label are overlapped so the cv won't be reliable
+
+    """
+
+    def __init__(self, n_splits=4, shuffle=True, random_state=42):
+        self.n_splits = n_splits
+        self.shuffle = shuffle
+        self.random_state = [random_state + i for i in np.arange(n_splits)]
+        # generate instances for under-sampling
+        self.samplers_ = [RandomUnderSampler(random_state=rs) for rs in self.random_state]
+
+    def get_n_splits(self, X=None, y=None, group=None):
+        return self.n_splits
+
+    def split(self, X, y, groups=None):
+        if X.ndim < 2:
+            # RandomUnderSampler...fit_resample() yields error when X is a 1d-array
+            X = np.vstack(X)
+
+        for i in range(self.n_splits):
+            # Under-sampling
+            sampler = self.samplers_[i]
+            _, y_sampled = sampler.fit_resample(X, y)
+
+            # get index of selected data
+            sampled_indices = sampler.sample_indices_
+
+            # split train and test
+            split_data = train_test_split(sampled_indices, 
+                                          shuffle=self.shuffle,
+                                          test_size=0.25, # default in train_test_split
+                                          stratify=y_sampled,
+                                          random_state=self.random_state[i],
+                                          )
+            train_idx, test_idx = split_data
+
+            yield train_idx, test_idx
+
