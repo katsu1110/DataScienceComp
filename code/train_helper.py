@@ -5,6 +5,8 @@ def get_oof_ypred(model, x_val, x_test, modelname="lgb", task="regression"):
     get oof and target predictions
     """
     sklearns = ["xgb", "catb", "linear", "knn"]
+    if task == "multiclass":
+        sklearns.append("lgb")
 
     if task == "binary": # classification
         # sklearn API

@@ -9,7 +9,7 @@ def xgb_model(cls, train_set, val_set):
     """
 
     # verbose
-    verbosity = 2000 if cls.verbose else 0
+    verbosity = 500 if cls.verbose else 0
 
     # list is here: https://xgboost.readthedocs.io/en/latest/parameter.html
     params = {
@@ -18,9 +18,9 @@ def xgb_model(cls, train_set, val_set):
         'max_depth': 4,
         'subsample': 1,
         'min_child_weight': 4,
-        'gamma':0.24,
+        'gamma': 0.24,
         'seed': cls.seed,
-        'n_estimators':2000
+        'n_estimators': 2000
     }
     if cls.task == "regression":
         params["objective"] = 'reg:squarederror'
@@ -38,7 +38,7 @@ def xgb_model(cls, train_set, val_set):
     elif (cls.task == "binary") | (cls.task == "multiclass"):
         model = xgb.XGBClassifier(**params)
     model.fit(train_set['X'], train_set['y'], eval_set=[(val_set['X'], val_set['y'])],
-                    early_stopping_rounds=100, verbose=verbosity)
+                    early_stopping_rounds=80, verbose=verbosity)
 
     # feature importance
     importance = model.get_booster().get_score(importance_type='gain')

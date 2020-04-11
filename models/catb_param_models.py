@@ -8,7 +8,7 @@ def catb_model(cls, train_set, val_set):
     """
 
     # verbose
-    verbosity = 2000 if cls.verbose else 0
+    verbosity = 500 if cls.verbose else 0
 
     # list is here: https://catboost.ai/docs/concepts/python-reference_parameters-list.html
     params = { 'task_type': "CPU",
@@ -17,7 +17,7 @@ def catb_model(cls, train_set, val_set):
                 'colsample_bylevel': 0.2,
                 'random_seed': cls.seed,
                 'use_best_model': True,
-                'early_stopping_rounds': 100
+                'early_stopping_rounds': 80
                 }
     if cls.task == "regression":
         params["loss_function"] = "RMSE"

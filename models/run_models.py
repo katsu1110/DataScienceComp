@@ -27,7 +27,7 @@ mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
 from train_helper import get_oof_ypred
 from multiclass_helper import onehot_target, ordinal_target
-from cv_methods import GroupKFold, StratifiedGroupKFold
+from cv_methods import GroupKFold, StratifiedGroupKFold, UnderBaggingKFold
 
 class RunModel(object):
     """
@@ -93,17 +93,16 @@ class RunModel(object):
         return model, fi # fitted model and feature importance
 
     def convert_dataset(self, x_train, y_train, x_val, y_val):
-        if self.model == "lgb":
+        if (self.model == "lgb") & (self.task != "multiclass"):
             train_set = lgb.Dataset(x_train, y_train, categorical_feature=self.categoricals)
             val_set = lgb.Dataset(x_val, y_val, categorical_feature=self.categoricals)
+        elif (self.model == "nn") & (self.task == "multiclass"):
+            n_class = len(np.unique(self.train_df[self.target].values))
+            train_set = {'X': x_train, 'y': onehot_target(y_train, n_class)}
+            val_set = {'X': x_val, 'y': onehot_target(y_val, n_class)}
         else:
-            if (self.model == "nn") & (self.task == "multiclass"):
-                n_class = len(np.unique(self.train_df[self.target].values))
-                train_set = {'X': x_train, 'y': onehot_target(y_train, n_class)}
-                val_set = {'X': x_val, 'y': onehot_target(y_val, n_class)}
-            else:
-                train_set = {'X': x_train, 'y': y_train}
-                val_set = {'X': x_val, 'y': y_val}
+            train_set = {'X': x_train, 'y': y_train}
+            val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
@@ -131,6 +130,9 @@ class RunModel(object):
         elif self.cv_method == "StratifiedGroupKFold":
             cv = StratifiedGroupKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target], self.group)
+        elif self.cv_method == "UnderBaggingKFold":
+            cv = UnderBaggingKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
+            return cv.split(self.train_df, self.train_df[self.target])
 
     def fit(self):
         # initialize
