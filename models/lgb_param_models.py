@@ -8,7 +8,7 @@ def lgb_model(cls, train_set, val_set):
     """
 
     # verbose
-    verbosity = 500 if cls.verbose else 0
+    verbosity = 100 if cls.verbose else 0
 
     # list is here: https://lightgbm.readthedocs.io/en/latest/Parameters.html
     params = {
@@ -21,7 +21,7 @@ def lgb_model(cls, train_set, val_set):
                 'learning_rate': 0.08,
                 'subsample': 0.76,
                 'subsample_freq': 1,
-                'feature_fraction': 0.2,
+                'feature_fraction': 0.4,
                 'lambda_l1': 1,
                 'lambda_l2': 1,
                 'seed': cls.seed,

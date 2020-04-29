@@ -9,11 +9,11 @@ def xgb_model(cls, train_set, val_set):
     """
 
     # verbose
-    verbosity = 500 if cls.verbose else 0
+    verbosity = 100 if cls.verbose else 0
 
     # list is here: https://xgboost.readthedocs.io/en/latest/parameter.html
     params = {
-        'colsample_bytree': 0.2,                 
+        'colsample_bytree': 0.4,                 
         'learning_rate': 0.08,
         'max_depth': 4,
         'subsample': 1,

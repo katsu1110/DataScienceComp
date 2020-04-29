@@ -8,13 +8,13 @@ def catb_model(cls, train_set, val_set):
     """
 
     # verbose
-    verbosity = 500 if cls.verbose else 0
+    verbosity = 100 if cls.verbose else 0
 
     # list is here: https://catboost.ai/docs/concepts/python-reference_parameters-list.html
     params = { 'task_type': "CPU",
                 'learning_rate': 0.08, 
                 'iterations': 2000,
-                'colsample_bylevel': 0.2,
+                'colsample_bylevel': 0.4,
                 'random_seed': cls.seed,
                 'use_best_model': True,
                 'early_stopping_rounds': 80

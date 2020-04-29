@@ -18,7 +18,7 @@ bash Anaconda3-4.2.0-Linux-x86_64.sh
 conda install -c conda-forge lightgbm
 conda install -c conda-forge xgboost
 conda install -c conda-forge catboost
-conda install -c conda-forge keras
+conda install -c conda-forge tensorflow
 conda install -c anaconda pytables
 pip install pyarrow
 conda install -c conda-forge imbalanced-learn
