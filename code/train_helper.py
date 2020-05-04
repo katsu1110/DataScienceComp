@@ -33,8 +33,8 @@ def get_oof_ypred(model, x_val, x_test, modelname="lgb", task="regression"):
             oof_pred = model.predict(x_val)
             y_pred = model.predict(x_test)
 
-        oof_pred = np.argmax(oof_pred, axis=1)
-        y_pred = np.argmax(y_pred, axis=1)
+        # oof_pred = np.argmax(oof_pred, axis=1)
+        # y_pred = np.argmax(y_pred, axis=1)
 
     elif task == "regression": # regression
         oof_pred = model.predict(x_val)

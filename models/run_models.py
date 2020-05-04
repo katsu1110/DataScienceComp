@@ -136,9 +136,14 @@ class RunModel(object):
 
     def fit(self):
         # initialize
-        oof_pred = np.zeros((self.train_df.shape[0], ))
         y_vals = np.zeros((self.train_df.shape[0], ))
-        y_pred = np.zeros((self.test_df.shape[0], ))
+        if self.task == "multiclass":
+            n_class = len(np.unique(self.train_df[self.target].values))
+            oof_pred = np.zeros((self.train_df.shape[0], n_class))
+            y_pred = np.zeros((self.test_df.shape[0], n_class))
+        else:
+            oof_pred = np.zeros((self.train_df.shape[0], ))
+            y_pred = np.zeros((self.test_df.shape[0], ))
 
         # group does not kick in when group k fold is used
         if self.group is not None:
@@ -195,13 +200,17 @@ class RunModel(object):
             fi[fold, :] = importance
             y_vals[val_idx] = y_val
 
-            # predictions
+            # predictions and check cv score
             oofs, ypred = get_oof_ypred(model, x_val, x_test, self.model, self.task)
-            oof_pred[val_idx] = oofs.reshape(oof_pred[val_idx].shape)
             y_pred += ypred.reshape(y_pred.shape) / self.n_splits
-
-            # check cv score
-            print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], oof_pred[val_idx])))
+            if self.task == "multitask":
+                oof_pred[val_idx, :] = oofs.reshape(oof_pred[val_idx, :].shape)
+                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], 
+                    np.argmax(oof_pred[val_idx, :], axis=1))))
+            else:
+                oof_pred[val_idx] = oofs.reshape(oof_pred[val_idx].shape)
+                print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], 
+                    oof_pred[val_idx])))
 
         # feature importance data frame
         fi_df = pd.DataFrame()
