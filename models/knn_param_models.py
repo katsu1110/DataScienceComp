@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
-import optuna
 
 def knn_model(cls, train_set, val_set):
     """
