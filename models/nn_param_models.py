@@ -8,9 +8,32 @@ from tensorflow.keras.callbacks import Callback, EarlyStopping, ReduceLROnPlatea
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras import losses, models, optimizers
-from tensorflow.keras.layers import Input, Layer, Dense, Embedding, Concatenate, Reshape, Dropout, Add, BatchNormalization, LayerNormalization, GaussianNoise
+from tensorflow.keras.utils import get_custom_objects
+from tensorflow.keras.layers import Input, Layer, Dense, Activation, Embedding, Concatenate, Reshape, Dropout, Add, BatchNormalization, LayerNormalization, GaussianNoise
 from tensorflow.keras import backend as K
 import math
+
+# enable mish
+class Mish(tf.keras.layers.Layer):
+
+    def __init__(self, **kwargs):
+        super(Mish, self).__init__(**kwargs)
+        self.supports_masking = True
+
+    def call(self, inputs):
+        return inputs * K.tanh(K.softplus(inputs))
+
+    def get_config(self):
+        base_config = super(Mish, self).get_config()
+        return dict(list(base_config.items()) + list(config.items()))
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+def mish(x):
+	return tf.keras.layers.Lambda(lambda x: x*K.tanh(K.softplus(x)))(x)
+
+get_custom_objects().update({'mish': Activation(mish)})
 
 def nn_model(cls, train_set, val_set):
     """
@@ -23,7 +46,7 @@ def nn_model(cls, train_set, val_set):
         'hidden_layers': 2,
         'hidden_units': 128,
         'embedding_out_dim': 4,
-        'hidden_activation': 'relu', 
+        'hidden_activation': 'mish', 
         'hidden_dropout': 0.04,
         'norm_type': 'batch', # layer
         'optimizer': {'type': 'adam', 'lr': 1e-4},
