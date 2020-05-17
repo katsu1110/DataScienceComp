@@ -130,7 +130,7 @@ class RunModel(object):
         this may need to be changed based on the metric of interest
         """
         if self.task == "multiclass":
-            return f1_score(y_true, np.argmax(y_pred, axis=1), average="macro")
+            return f1_score(y_true, y_pred, average="macro")
         elif self.task == "binary":
             return roc_auc_score(y_true, y_pred) # log_loss
         elif self.task == "regression":
