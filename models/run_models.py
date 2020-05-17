@@ -66,6 +66,25 @@ class RunModel(object):
     def __init__(self, train_df : pd.DataFrame, test_df : pd.DataFrame, target : str, features : List, categoricals: List=[],
                 model : str="lgb", task : str="regression", n_splits : int=4, cv_method : str="KFold", 
                 group : str=None, parameter_tuning=False, seed : int=1220, scaler : str=None, verbose=True):
+
+        # display info
+        print("##############################")
+        print(f"Starting training model {model} for a {task} task:")
+        print(f"- train records: {len(train_df)}, test records: {len(test_df)}")
+        print(f"- target column is {target}")
+        print(f"- {len(features)} features with {len(categoricals)} categorical features")
+        print(f"- CV strategy : {cv_method} with {n_splits} splits")
+        if group is None:
+            print(f"- no group parameter is used for validation")
+        else:
+            print(f"- {group} as group parameter")
+        if scaler is None:
+            print("- No scaler is used")
+        else:
+            print(f"- {scaler} scaler is used")
+        print("##############################")
+
+        # class initializing setups
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
