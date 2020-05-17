@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os, sys
+from typing import List, NoReturn, Union, Tuple, Optional, Text, Generic, Callable, Dict
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error, f1_score
@@ -62,9 +63,9 @@ class RunModel(object):
     np.save("oof", model.oof)
     """
 
-    def __init__(self, train_df, test_df, target, features, categoricals=[],
-                model="lgb", task="regression", n_splits=4, cv_method="KFold", 
-                group=None, parameter_tuning=False, seed=1220, scaler=None, verbose=True):
+    def __init__(self, train_df : pd.DataFrame, test_df : pd.DataFrame, target : str, features : List, categoricals: List=[],
+                model : str="lgb", task : str="regression", n_splits : int=4, cv_method : str="KFold", 
+                group : str=None, parameter_tuning=False, seed : int=1220, scaler : str=None, verbose=True):
         self.train_df = train_df
         self.test_df = test_df
         self.target = target
