@@ -234,7 +234,7 @@ class RunModel(object):
             # predictions and check cv score
             oofs, ypred = get_oof_ypred(model, x_val, x_test, self.model, self.task)
             y_pred += ypred.reshape(y_pred.shape) / self.n_splits
-            if self.task == "multitask":
+            if self.task == "multiclass":
                 oof_pred[val_idx, :] = oofs.reshape(oof_pred[val_idx, :].shape)
                 print('Partial score of fold {} is: {}'.format(fold, self.calc_metric(y_vals[val_idx], 
                     np.argmax(oof_pred[val_idx, :], axis=1))))
@@ -255,7 +255,7 @@ class RunModel(object):
         fi_df = fi_df.merge(gfi, on="features", how="left", suffixes=('', '_mean'))
 
         # outputs
-        if self.task == "multitask":
+        if self.task == "multiclass":
             loss_score = self.calc_metric(y_vals, np.argmax(oof_pred, axis=1))
         else:
             loss_score = self.calc_metric(y_vals, oof_pred)
@@ -275,7 +275,7 @@ class RunModel(object):
                 group=None, seed=1220, scaler=None)
         
         # plot 
-        model.plot_feature_importance(rank_range=[1, 100])
+        fi_df = model.plot_feature_importance(rank_range=[1, 100])
         
         """
         # plot feature importance
