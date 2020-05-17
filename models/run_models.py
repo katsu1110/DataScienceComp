@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os, sys
 from typing import List, NoReturn, Union, Tuple, Optional, Text, Generic, Callable, Dict
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, QuantileTransformer
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error, f1_score
 
@@ -214,15 +214,20 @@ class RunModel(object):
             self.train_df[self.categoricals] = self.train_df[self.categoricals].fillna(self.train_df[self.categoricals].mode().iloc[0])
             self.test_df[self.categoricals] = self.test_df[self.categoricals].fillna(self.test_df[self.categoricals].mode().iloc[0])
 
-            # scaling
+            # to normal
+            pt = QuantileTransformer(n_quantiles=100, random_state=self.seed, output_distribution="normal")
+            self.train_df[numerical_features] = pt.fit_transform(self.train_df[numerical_features])
+            self.test_df[numerical_features] = pt.transform(self.test_df[numerical_features])
+
+            # starndardize
             if self.scaler == "MinMax":
                 scaler = MinMaxScaler()
             elif self.scaler == "Standard":
                 scaler = StandardScaler()
-            df = pd.concat([self.train_df[numerical_features], self.test_df[numerical_features]], ignore_index=True)
-            scaler.fit(df[numerical_features])
+            self.train_df[numerical_features] = scaler.fit_transform(self.train_df[numerical_features])
+            self.test_df[numerical_features] = scaler.transform(self.test_df[numerical_features])
+
             x_test = self.test_df.copy()
-            x_test[numerical_features] = scaler.transform(x_test[numerical_features])
             if self.model == "nn":
                 x_test = [np.absolute(x_test[i]) for i in self.categoricals] + [x_test[numerical_features]]
             else:
@@ -236,13 +241,9 @@ class RunModel(object):
             x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
             y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
 
-            # fitting & get feature importance
-            if self.scaler is not None:
-                x_train[numerical_features] = scaler.transform(x_train[numerical_features])
-                x_val[numerical_features] = scaler.transform(x_val[numerical_features])
-                if self.model == "nn":
-                    x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
-                    x_val = [np.absolute(x_val[i]) for i in self.categoricals] + [x_val[numerical_features]]
+            if self.model == "nn":
+                x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
+                x_val = [np.absolute(x_val[i]) for i in self.categoricals] + [x_val[numerical_features]]
 
             # model fitting
             train_set, val_set = self.convert_dataset(x_train, y_train, x_val, y_val)
