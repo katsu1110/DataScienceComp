@@ -33,20 +33,33 @@ class RunModel(object):
     """
     Model Fitting and Prediction Class:
 
-    train_df : train pandas dataframe
-    test_df : test pandas dataframe
-    target : target column name (str)
-    features : list of feature names
-    categoricals : list of categorical feature names
-    model : lgb, xgb, catb, linear, or nn
-    task : options are ... regression, multiclass, or binary
-    n_splits : K in KFold (default is 3)
-    cv_method : options are ... KFold, StratifiedKFold, TimeSeriesSplit, GroupKFold, StratifiedGroupKFold
-    group : group feature name when GroupKFold or StratifiedGroupKFold are used
-    parameter_tuning : bool, only for LGB
-    seed : seed (int)
-    scaler : options are ... None, MinMax, Standard
-    verbose : bool
+    :INPUTS:
+
+    :train_df: train pandas dataframe
+    :test_df: test pandas dataframe
+    :target: target column name (str)
+    :features: list of feature names
+    :categoricals: list of categorical feature names. Note that categoricals need to be in 'features'
+    :model: 'lgb', 'xgb', 'catb', 'linear', or 'nn'
+    :task: 'regression', 'multiclass', or 'binary'
+    :n_splits: K in KFold (default is 4)
+    :cv_method: 'KFold', 'StratifiedKFold', 'TimeSeriesSplit', 'GroupKFold', 'StratifiedGroupKFold'
+    :group: group feature name when GroupKFold or StratifiedGroupKFold are used
+    :parameter_tuning: True or False (not implemented for now)
+    :seed: seed (int)
+    :scaler: None, 'MinMax', 'Standard'
+    :verbose: bool
+
+    :EXAMPLE:
+
+    # fit LGB regression model
+    model = RunModel(train_df, test_df, target, features, categoricals=categoricals,
+            model="lgb", task="regression", n_splits=4, cv_method="KFold", 
+            group=None, seed=1220, scaler=None)
+    
+    # save predictions on train, test data
+    np.save("y_pred", model.y_pred)
+    np.save("oof", model.oof)
     """
 
     def __init__(self, train_df, test_df, target, features, categoricals=[],
@@ -70,7 +83,9 @@ class RunModel(object):
         self.y_pred, self.score, self.model, self.oof, self.y_val, self.fi_df = self.fit()
 
     def train_model(self, train_set, val_set):
-
+        """
+        employ a model
+        """
         # compile model
         if self.model == "lgb": # LGB             
             model, fi = lgb_model(self, train_set, val_set)
@@ -93,6 +108,9 @@ class RunModel(object):
         return model, fi # fitted model and feature importance
 
     def convert_dataset(self, x_train, y_train, x_val, y_val):
+        """
+        dataset converter
+        """
         if (self.model == "lgb") & (self.task != "multiclass"):
             train_set = lgb.Dataset(x_train, y_train, categorical_feature=self.categoricals)
             val_set = lgb.Dataset(x_val, y_val, categorical_feature=self.categoricals)
@@ -105,7 +123,11 @@ class RunModel(object):
             val_set = {'X': x_val, 'y': y_val}
         return train_set, val_set
 
-    def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
+    def calc_metric(self, y_true, y_pred): 
+        """
+        calculate evaluation metric for each task
+        this may need to be changed based on the metric of interest
+        """
         if self.task == "multiclass":
             return f1_score(y_true, np.argmax(y_pred, axis=1), average="macro")
         elif self.task == "binary":
@@ -114,6 +136,10 @@ class RunModel(object):
             return np.sqrt(mean_squared_error(y_true, y_pred))
 
     def get_cv(self):
+        """
+        employ CV strategy
+        """
+
         # return cv.split
         if self.cv_method == "KFold":
             cv = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
@@ -135,6 +161,10 @@ class RunModel(object):
             return cv.split(self.train_df, self.train_df[self.target])
 
     def fit(self):
+        """
+        perform model fitting        
+        """
+
         # initialize
         y_vals = np.zeros((self.train_df.shape[0], ))
         if self.task == "multiclass":
@@ -234,6 +264,19 @@ class RunModel(object):
         return y_pred, loss_score, model, oof_pred, y_vals, fi_df
 
     def plot_feature_importance(self, rank_range=[1, 50]):
+        """
+        function for plotting feature importance 
+
+        :EXAMPLE:
+        # fit LGB regression model
+        model = RunModel(train_df, test_df, target, features, categoricals=categoricals,
+                model="lgb", task="regression", n_splits=4, cv_method="KFold", 
+                group=None, seed=1220, scaler=None)
+        
+        # plot 
+        model.plot_feature_importance(rank_range=[1, 100])
+        
+        """
         # plot feature importance
         _, ax = plt.subplots(1, 1, figsize=(10, 20))
         sorted_df = self.fi_df.sort_values(by = "importance_mean", ascending=False).reset_index().iloc[self.n_splits * (rank_range[0]-1) : self.n_splits * rank_range[1]]
