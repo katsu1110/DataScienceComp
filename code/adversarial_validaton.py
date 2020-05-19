@@ -34,7 +34,7 @@ class AdversarialValidation(object):
 
     # plot features different between train and test
     sorted_df = adv.plot_feature_importance()
-
+    sorted_df.head()
 
     """
     def __init__(self, train : pd.DataFrame, test : pd.DataFrame, features : List, n_splits : int=4, seed : int=116):
@@ -46,9 +46,15 @@ class AdversarialValidation(object):
         self.fi_df = self.run()
 
     def calc_metric(self, y_true, y_pred):
+        """
+        compute AUC
+        """
         return roc_auc_score(y_true, y_pred)
 
     def get_params(self):
+        """
+        LGB parameters (fast ones)
+        """
         # list is here: https://lightgbm.readthedocs.io/en/latest/Parameters.html
         params = {
                     'n_estimators': 2000,
@@ -68,6 +74,10 @@ class AdversarialValidation(object):
         return params
             
     def run(self):
+        """
+        run adversarial validation
+        """
+
         # train = 1, test = 0
         df = pd.concat([self.train[self.features], self.test[self.features]],
                         ignore_index=True)
@@ -114,7 +124,6 @@ class AdversarialValidation(object):
     def plot_feature_importance(self, rank_range=[1, 50]):
         """
         function for plotting feature importance
-        
         """
         # plot feature importance
         _, ax = plt.subplots(1, 1, figsize=(10, 20))
