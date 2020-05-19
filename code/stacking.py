@@ -1,43 +1,60 @@
 import os
 import sys
-
 import numpy as np
 import pandas as pd
+from typing import List, NoReturn, Union, Tuple, Optional, Text, Generic, Callable, Dict
 
 from sklearn import linear_model
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
-from sklearn.metrics import mean_squared_error, mean_absolute_error, accuracy_score, log_loss, roc_auc_score
+from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error, f1_score
 
 # stacking
 class Stacking(object):
     """
     perform stacking ensemble
-    - oof, ypred are (samples x models) numpy array
-    - yval (samples, ) numpy array 
-    - n_splits : K in KFold (default is 100)
-    - seed : seed (int)
-    - objective : regression, multiclass, or binary
+
+    :INPUTS:
+
+    :oof: dictionary {ModelName : oof (samples x models) numpy array, ...}
+    :yval: (samples, ) numpy array
+    :ypred: dictionary {ModelName : ypred (samples x models) numpy array, ...}
+    :n_splits: K in KFold (default is 100)
+    :seed: seed (int)
+    :task: regression, multiclass, or binary
+
+    :EXAMPLE:
+
+    # load data
+    oof = {'lgb' : np.load("../input/lgb/oof.npy"), 'mlp' : np.load("../input/mlp/oof.npy")}
+    yval = train[target].values
+    ypred = {'lgb' : np.load("../input/lgb/ypred.npy"), 'mlp' : np.load("../input/mlp/ypred.npy")}
+
+    # run stacking ensemble
+    s = Stacking(oof, yval, ypred, task="regression")
+    stacking_oof, stacking_pred = s.fit()
     """
 
-    def __init__(self, oof, yval, ypred, n_splits=100, seed=1220, task="regression"):
-        # objective can be either "regression" or "classification"
-        self.oof = oof # out-of-fold prediction
-        self.yval = yval # actual target in the out-of-fold
-        self.ypred = ypred # prediction for test
+    def __init__(self, oof : Dict, yval : np.ndarray, ypred : Dict, n_splits : int=100, seed : int=1220, task : str="regression"):
+        self.oof = oof
+        self.yval = yval 
+        self.ypred = ypred 
         self.n_splits = n_splits
         self.seed = seed
         self.task = task
 
     def calc_metric(self, y_true, y_pred): # this may need to be changed based on the metric of interest
         if self.task == "multiclass":
-            return roc_auc_score(y_true, y_pred, average="macro")
+            return f1_score(y_true, y_pred, average="macro")
         elif self.task == "binary":
             return roc_auc_score(y_true, y_pred)
         elif self.task == "regression":
             return np.sqrt(mean_squared_error(y_true, y_pred))
 
     def fit(self):
+        # number of models
+        n_models = len(self.oof)
+
         # z-scoring
         scaler = StandardScaler()
         self.oof = scaler.fit_transform(self.oof)

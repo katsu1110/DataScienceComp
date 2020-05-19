@@ -15,7 +15,7 @@ import seaborn as sns
 from matplotlib import pyplot
 from matplotlib.ticker import ScalarFormatter
 sns.set_context("talk")
-style.use('fivethirtyeight')
+style.use('ggplot')
 
 # custom
 from lgb_param_models import lgb_model
