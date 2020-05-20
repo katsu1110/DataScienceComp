@@ -16,7 +16,6 @@ sns.set_context("talk")
 style.use('ggplot')
 
 # adversarial validation
-# adversarial validation
 class AdversarialValidation(object):
     """
     perform adversarial validation using LGB model
@@ -127,7 +126,7 @@ class AdversarialValidation(object):
         """
         function for plotting feature importance
         """
-        
+
         # plot feature importance
         _, ax = plt.subplots(1, 1, figsize=(10, 20))
         sorted_df = self.fi_df.sort_values(by = "importance_mean", ascending=False).reset_index().iloc[self.n_splits * (rank_range[0]-1) : self.n_splits * rank_range[1]]
