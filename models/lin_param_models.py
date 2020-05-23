@@ -6,21 +6,35 @@ def lin_model(cls, train_set, val_set):
     Linear model hyperparameters and models
     """
 
-    params = {
-            'max_iter': 8000,
-            'fit_intercept': True,
-            'random_state': cls.seed
-        }
-
     if cls.task == "regression":
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html
-        model = linear_model.Ridge(**{'alpha': 220, 'solver': 'lsqr', 'fit_intercept': params['fit_intercept'],
-                                'max_iter': params['max_iter'], 'random_state': params['random_state']})
-    elif (cls.task == "binary") | (cls.task == "multiclass"):
+        params = {
+                'alpha': 80, 
+                'solver': 'lsqr', 
+                'fit_intercept': True,
+                'max_iter': 4000, 
+                'tol': 1e-04,
+                'random_state': cls.seed,
+        }
+        model = linear_model.Ridge(**params)
+    else:
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
-        model = linear_model.LogisticRegression(**{"C": 1.0, "fit_intercept": params['fit_intercept'], 
-                                "random_state": params['random_state'], "solver": "lbfgs", "max_iter": params['max_iter'], 
-                                "multi_class": 'auto', "verbose":0, "warm_start":False})
+        params = {
+                  "C": 1.0, 
+                  "solver": "lbfgs", 
+                  "warm_start": False,
+                  "max_iter": 4000,
+                  "fit_intercept": True,
+                  "random_state": cls.seed,
+                  "tol": 1e-04,
+                  "verbose": 1, 
+                  "class_weight": "balanced", 
+        }
+        if cls.task == "binary":
+            model = linear_model.LogisticRegression(**params)
+        elif cls.task == "multiclass":
+            params["multi_class"] = "multinomial"
+            model = linear_model.LogisticRegression(**params)
                                 
     model.fit(train_set['X'], train_set['y'])
 

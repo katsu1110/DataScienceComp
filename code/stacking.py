@@ -95,6 +95,33 @@ class Stacking(object):
                       'multi_class' : 'auto', 'verbose' : 0, 'warm_start' : False}
         return params
 
+    def plot_similarity(self):
+        """
+        plot correlation matrix across different model predictions
+        """
+
+        # to pandas 
+        oof_df = pd.DataFrame()
+        pred_df = pd.DataFrame()
+        for m in self.oof.keys():
+            oof_df[m] = np.argmax(self.oof[m], axis=1)
+            pred_df[m] = np.argmax(self.ypred[m], axis=1)
+
+        # plot correlation matrix
+        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        ax = ax.flatten()
+        cbar_ax = fig.add_axes([1., .3, .03, 1.])
+        cmap = "YlGnBu"
+        fmt = ".4f"
+        sns.heatmap(oof_df.corr(), annot=True, cbar=True, fmt=fmt, 
+                    square=True, linewidths=.5, cbar_kws={"shrink": .5}, cbar_ax=cbar_ax, cmap=cmap, ax=ax[0])
+        ax[0].set_title("oof")
+        ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45, ha="right")
+        sns.heatmap(pred_df.corr(), annot=True, cbar=True, fmt=fmt, 
+                        square=True, linewidths=.5, cbar_kws={"shrink": .5}, cbar_ax=cbar_ax, cmap=cmap, ax=ax[1])
+        ax[1].set_title("pred")
+        ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45, ha="right")
+
     def fit(self):
         """
         fit a linear model for stacking ensemble
