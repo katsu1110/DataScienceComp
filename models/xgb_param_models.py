@@ -19,6 +19,8 @@ def xgb_model(cls, train_set, val_set):
         'subsample': 1,
         'min_child_weight': 4,
         'gamma': 0.24,
+        'alpha': 0,
+        'lambda': 1,
         'seed': cls.seed,
         'n_estimators': 2000
     }
