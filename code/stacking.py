@@ -114,7 +114,7 @@ class Stacking(object):
         # plot correlation matrix
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
         ax = ax.flatten()
-        cbar_ax = fig.add_axes([1., .3, .03, 1.])
+        cbar_ax = fig.add_axes([1., .3, .03, .7])
         cmap = "YlGnBu"
         fmt = ".4f"
         sns.heatmap(oof_df.corr(), annot=True, cbar=True, fmt=fmt, 
