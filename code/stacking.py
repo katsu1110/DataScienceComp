@@ -104,8 +104,12 @@ class Stacking(object):
         oof_df = pd.DataFrame()
         pred_df = pd.DataFrame()
         for m in self.oof.keys():
-            oof_df[m] = np.argmax(self.oof[m], axis=1)
-            pred_df[m] = np.argmax(self.ypred[m], axis=1)
+            if self.task == "multiclass":
+                oof_df[m] = np.argmax(self.oof[m], axis=1)
+                pred_df[m] = np.argmax(self.ypred[m], axis=1)
+            else:
+                oof_df[m] = self.oof[m]
+                pred_df[m] = self.ypred[m]
 
         # plot correlation matrix
         fig, ax = plt.subplots(1, 2, figsize=(12, 5))
