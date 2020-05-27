@@ -44,7 +44,7 @@ class Stacking(object):
     stacking_oof, stacking_pred = s.fit()
     """
 
-    def __init__(self, oof : Dict, yval : np.ndarray, ypred : Dict, n_splits : int=100, seed : int=1220, task : str="regression"):
+    def __init__(self, oof : Dict, yval : np.ndarray, ypred : Dict, n_splits : int=5, seed : int=1220, task : str="regression"):
         self.oof = oof
         self.yval = yval 
         self.ypred = ypred 
@@ -58,12 +58,16 @@ class Stacking(object):
         """    
 
         for i, k in enumerate(self.oof.keys()):
-            if i == 0:
-                train = pd.DataFrame(data=self.oof[k], columns=[f"{k}_{p}" for p in range(self.oof[k].shape[1])])
-                test = pd.DataFrame(data=self.ypred[k], columns=[f"{k}_{p}" for p in range(self.ypred[k].shape[1])])
+            if self.task == "multiclass":
+                col = [f"{k}_{p}" for p in range(self.oof[k].shape[1])]
             else:
-                train_tmp = pd.DataFrame(data=self.oof[k], columns=[f"{k}_{p}" for p in range(self.oof[k].shape[1])])
-                test_tmp = pd.DataFrame(data=self.ypred[k], columns=[f"{k}_{p}" for p in range(self.ypred[k].shape[1])]) 
+                col = [f"{k}"]
+            if i == 0:
+                train = pd.DataFrame(data=self.oof[k], columns=col)
+                test = pd.DataFrame(data=self.ypred[k], columns=col)
+            else:
+                train_tmp = pd.DataFrame(data=self.oof[k], columns=col)
+                test_tmp = pd.DataFrame(data=self.ypred[k], columns=col) 
                 train = pd.concat([train, train_tmp], axis=1)
                 test = pd.concat([test, test_tmp], axis=1)
         return train, test
@@ -87,11 +91,11 @@ class Stacking(object):
         """
 
         if self.task == "regression": # Ridge
-            params = {'alpha': 220, 'solver': 'lsqr', 'fit_intercept': True,
-                'max_iter': 5000, 'random_state': seed}
+            params = {'alpha': 160, 'solver': 'lsqr', 'fit_intercept': True,
+                'max_iter': 4000, 'random_state': seed}
         elif (self.task == "binary") | (self.task == "multiclass"): # logistic regression
             params = {'penalty': 'l2', 'tol' : 0.0001, 'C' : 1.0, 'fit_intercept' : True, 
-                      'random_state' : seed, 'solver': 'lbfgs', 'max_iter' : 5000, 
+                      'random_state' : seed, 'solver': 'lbfgs', 'max_iter' : 4000, 
                       'multi_class' : 'auto', 'verbose' : 0, 'warm_start' : False}
         return params
 
@@ -141,10 +145,14 @@ class Stacking(object):
         test = scaler.transform(test)
 
         # train a linear model
-        kf = KFold(n_splits=self.n_splits, random_state=self.seed, shuffle=True)
+        if self.task == "regression":
+            kf = KFold(n_splits=self.n_splits, random_state=self.seed, shuffle=True)
+        else:
+            kf = StratifiedKFold(n_splits=self.n_splits, random_state=self.seed, shuffle=True)
+
         stack_oof = np.zeros(len(y))
         stack_pred = np.zeros(test.shape[0])
-        for fold, (train_index, test_index) in enumerate(kf.split(train)):
+        for fold, (train_index, test_index) in enumerate(kf.split(train, y)):
             # train test split
             x_train, x_val = train[train_index, :], train[test_index, :]
             y_train, y_val = y[train_index], y[test_index]
