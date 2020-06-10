@@ -57,17 +57,17 @@ class AdversarialValidation(object):
         """
         # list is here: https://lightgbm.readthedocs.io/en/latest/Parameters.html
         params = {
-                    'n_estimators': 800,
+                    'n_estimators': 2000,
                     'objective': 'binary',
                     'boosting_type': 'gbdt',
-                    'num_leaves': 32,
+                    'num_leaves': 16,
                     'learning_rate': 0.12,
-                    'feature_fraction': 1,
+                    'feature_fraction': 0.64,
                     'lambda_l1': 0.8,
                     'lambda_l2': 0.8,
                     'seed': self.seed,
                     'early_stopping_rounds': 80,
-                    'num_boost_round': 800
+                    'num_boost_round': 2000
                     }    
         params["metric"] = "auc" # other candidates: binary_logloss
         # params["is_unbalance"] = True # assume unbalanced data

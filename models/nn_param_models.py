@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import os, sys
 import math
+import random
+from typing import List, NoReturn, Union, Tuple, Optional, Text, Generic, Callable, Dict
 
 # keras
 import tensorflow as tf
@@ -35,10 +37,19 @@ def mish(x):
 
 utils.get_custom_objects().update({'mish': layers.Activation(mish)})
 
+def seed_everything(seed : int) -> NoReturn :    
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    tf.random.set_seed(seed)
+
 def nn_model(cls, train_set, val_set):
     """
     NN hyperparameters and models
     """
+
+    # set seed for tf
+    seed_everything(cls.seed)
 
     # adapted from https://github.com/ghmagazine/kagglebook/blob/master/ch06/ch06-03-hopt_nn.py
     params = {
