@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn import utils
 import xgboost as xgb
 import operator
 
@@ -30,6 +31,8 @@ def xgb_model(cls, train_set, val_set):
     elif cls.task == "binary":
         params["objective"] = 'binary:logistic'
         params["eval_metric"] = "auc"
+        cw = utils.class_weight.compute_class_weight('balanced', np.unique(train_set['y']), train_set['y'])
+        params['scale_pos_weight'] = int(cw[1] / cw[0])
     elif cls.task == "multiclass":
         params["objective"] = 'multi:softmax'
         params["eval_metric"] = "mlogloss" 

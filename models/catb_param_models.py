@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from sklearn import utils
 from catboost import CatBoostRegressor, CatBoostClassifier
 
 def catb_model(cls, train_set, val_set):
@@ -26,12 +27,14 @@ def catb_model(cls, train_set, val_set):
         params["eval_metric"] = "AUC"
     elif cls.task == "multiclass":
         params["loss_function"] = "MultiClass"
-        params["eval_metric"] = "TotalF1"
+        params["eval_metric"] = "MultiClass"
 
     # modeling
     if cls.task == "regression":
         model = CatBoostRegressor(**params)
     elif (cls.task == "binary") | (cls.task == "multiclass"):
+        cw = utils.class_weight.compute_class_weight('balanced', np.unique(train_set['y']), train_set['y'])
+        params['class_weights'] = cw
         model = CatBoostClassifier(**params)
     model.fit(train_set['X'], train_set['y'], eval_set=(val_set['X'], val_set['y']),
         verbose=verbosity, cat_features=cls.categoricals)
