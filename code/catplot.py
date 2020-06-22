@@ -15,8 +15,7 @@ import plotly.express as px
 import missingno as msno
 
 sns.set_context("talk")
-# sns.set_style("ticks", {"xtick.major.size": 8, "ytick.major.size": 8})
-style.use('fivethirtyeight')
+style.use('seaborn-colorblind')
 # plt.rcParams.update({'font.size': 13})
 
  # for categorical features

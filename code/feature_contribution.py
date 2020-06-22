@@ -18,7 +18,7 @@ from matplotlib import pyplot
 from matplotlib.ticker import ScalarFormatter
 import waterfall_chart
 sns.set_context("talk")
-style.use('fivethirtyeight')
+style.use('seaborn-colorblind')
 
 class FeatureContribution(object):
     """

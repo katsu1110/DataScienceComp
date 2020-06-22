@@ -16,7 +16,7 @@ import seaborn as sns
 from matplotlib import pyplot
 from matplotlib.ticker import ScalarFormatter
 sns.set_context("talk")
-style.use('ggplot')
+style.use('seaborn-colorblind')
 
 # stacking
 class Stacking(object):
