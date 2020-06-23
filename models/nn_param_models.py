@@ -54,16 +54,16 @@ def nn_model(cls, train_set, val_set):
     # adapted from https://github.com/ghmagazine/kagglebook/blob/master/ch06/ch06-03-hopt_nn.py
     params = {
         'input_dropout': 0.0,
-        'hidden_layers': 2,
-        'hidden_units': 64,
+        'hidden_layers': 3,
+        'hidden_units': 256,
         'embedding_out_dim': 4,
         'hidden_activation': 'mish', 
         'hidden_dropout': 0.04,
         'gauss_noise': 0.01,
         'norm_type': 'batch', # layer
         'optimizer': {'type': 'adam', 'lr': 1e-3},
-        'batch_size': 64,
-        'epochs': 40
+        'batch_size': 128,
+        'epochs': 80
     }
 
     # NN model architecture
@@ -129,7 +129,7 @@ def nn_model(cls, train_set, val_set):
     ReduceLR = callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, verbose=1, epsilon=params['optimizer']['lr'], mode='min')
     history = model.fit(train_set['X'], train_set['y'], callbacks=[er, ReduceLR],
                         epochs=params['epochs'], batch_size=params['batch_size'],
-                        validation_data=[val_set['X'], val_set['y']])        
+                        validation_data=(val_set['X'], val_set['y']))        
         
     # permutation importance to get a feature importance (off in default)
     # fi = PermulationImportance(model, train_set['X'], train_set['y'], cls.features)
