@@ -40,6 +40,7 @@ class RunModel(object):
     :target: target column name (str)
     :features: list of feature names
     :categoricals: list of categorical feature names. Note that categoricals need to be in 'features'
+    :target_encoding: True or False
     :model: 'lgb', 'xgb', 'catb', 'linear', or 'nn'
     :task: 'regression', 'multiclass', or 'binary'
     :n_splits: K in KFold (default is 4)
@@ -54,7 +55,7 @@ class RunModel(object):
 
     # fit LGB regression model
     model = RunModel(train_df, test_df, target, features, categoricals=categoricals,
-            model="lgb", task="regression", n_splits=4, cv_method="KFold", 
+            target_encoding=False, model="lgb", task="regression", n_splits=4, cv_method="KFold", 
             group=None, seed=1220, scaler=None)
     
     # save predictions on train, test data
@@ -63,7 +64,7 @@ class RunModel(object):
     """
 
     def __init__(self, train_df : pd.DataFrame, test_df : pd.DataFrame, target : str, features : List, categoricals: List=[],
-                model : str="lgb", task : str="regression", n_splits : int=4, cv_method : str="KFold", 
+                target_encoding=False, model : str="lgb", task : str="regression", n_splits : int=4, cv_method : str="KFold", 
                 group : str=None, parameter_tuning=False, seed : int=1220, scaler : str=None, verbose=True):
 
         # display info
@@ -72,6 +73,10 @@ class RunModel(object):
         print(f"- train records: {len(train_df)}, test records: {len(test_df)}")
         print(f"- target column is {target}")
         print(f"- {len(features)} features with {len(categoricals)} categorical features")
+        if target_encoding:
+            print(f"- target encoding: Applied")
+        else:
+            print(f"- target encoding: NOT Applied")
         print(f"- CV strategy : {cv_method} with {n_splits} splits")
         if group is None:
             print(f"- no group parameter is used for validation")
@@ -89,6 +94,7 @@ class RunModel(object):
         self.target = target
         self.features = features
         self.categoricals = categoricals
+        self.target_encoding = target_encoding
         self.model = model
         self.task = task
         self.n_splits = n_splits
@@ -234,11 +240,41 @@ class RunModel(object):
         else:
             x_test = self.test_df[self.features]
 
+        # target encoding setup
+        if self.target_encoding:
+            cats = self.categoricals.copy()
+            self.categoricals = []
+            numerical_features = numerical_features + cats
+
         # fitting with out of fold
         for fold, (train_idx, val_idx) in enumerate(self.cv):
             # train test split
             x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
             y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
+
+            # target encoding
+            if self.target_encoding:
+                for c in cats:
+                    data_tmp = pd.DataFrame({c: x_train[c], 'target': y_train})
+                    target_mean = data_tmp.groupby(c)['target'].mean()
+                    
+                    # replace categorical variable in test
+                    x_val[c] = x_val[c].map(target_mean)
+                    x_test[c] = x_test[c].map(target_mean)
+
+                    # array to store transformed values
+                    tmp = np.repeat(np.nan, x_train.shape[0])
+
+                    # split train data
+                    kf = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed+1)
+                    for idx_1, idx_2 in kf.split(x_train):
+                        # out-of-fold
+                        target_mean = data_tmp.iloc[idx_1].groupby(c)['target'].mean()
+                        # store
+                        tmp[idx_2] = x_train[c].iloc[idx_2].map(target_mean)
+
+                    # replace
+                    x_train[c] = tmp
 
             if self.model == "nn":
                 x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
