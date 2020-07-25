@@ -208,10 +208,32 @@ class RunModel(object):
                 self.categoricals.remove(self.group)
         fi = np.zeros((self.n_splits, len(self.features)))
 
+        # target encoding
+        numerical_features = [f for f in self.features if f not in self.categoricals]
+        if self.target_encoding:
+            # copy cats
+            cats = self.categoricals.copy()
+            self.categoricals = []
+            numerical_features = numerical_features + cats
+            
+            # perform target encoding
+            for c in cats:
+                data_tmp = pd.DataFrame({c: self.train_df[c], 'target': self.train_df[self.target]})
+                tmp = np.repeat(np.nan, self.train_df.shape[0])
+
+                for train_idx, val_idx in self.cv:
+                    target_mean = data_tmp.iloc[train_idx].groupby(c)['target'].mean()
+                    tmp[val_idx] = self.train_df[c].iloc[val_idx].map(target_mean)
+
+                self.train_df[c] = tmp
+
+                # replace categorical variable in test
+                target_mean = data_tmp.groupby(c)['target'].mean()
+                self.test_df[c] = self.test_df[c].map(target_mean)
+
         # scaling, if necessary
         if self.scaler is not None:
             # fill NaN (numerical features -> median, categorical features -> mode)
-            numerical_features = [f for f in self.features if f not in self.categoricals]
             self.train_df[numerical_features] = self.train_df[numerical_features].replace([np.inf, -np.inf], np.nan)
             self.test_df[numerical_features] = self.test_df[numerical_features].replace([np.inf, -np.inf], np.nan)
             self.train_df[numerical_features] = self.train_df[numerical_features].fillna(self.train_df[numerical_features].median())
@@ -240,41 +262,11 @@ class RunModel(object):
         else:
             x_test = self.test_df[self.features]
 
-        # target encoding setup
-        if self.target_encoding:
-            cats = self.categoricals.copy()
-            self.categoricals = []
-            numerical_features = numerical_features + cats
-
         # fitting with out of fold
         for fold, (train_idx, val_idx) in enumerate(self.cv):
             # train test split
             x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
             y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
-
-            # target encoding
-            if self.target_encoding:
-                for c in cats:
-                    data_tmp = pd.DataFrame({c: x_train[c], 'target': y_train})
-                    target_mean = data_tmp.groupby(c)['target'].mean()
-                    
-                    # replace categorical variable in test
-                    x_val[c] = x_val[c].map(target_mean)
-                    x_test[c] = x_test[c].map(target_mean)
-
-                    # array to store transformed values
-                    tmp = np.repeat(np.nan, x_train.shape[0])
-
-                    # split train data
-                    kf = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed+1)
-                    for idx_1, idx_2 in kf.split(x_train):
-                        # out-of-fold
-                        target_mean = data_tmp.iloc[idx_1].groupby(c)['target'].mean()
-                        # store
-                        tmp[idx_2] = x_train[c].iloc[idx_2].map(target_mean)
-
-                    # replace
-                    x_train[c] = tmp
 
             if self.model == "nn":
                 x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
