@@ -27,7 +27,7 @@ from nn_param_models import nn_model
 mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
 from train_helper import get_oof_ypred
-from cv_methods import GroupKFold, StratifiedGroupKFold, UnderBaggingKFold
+from cv_methods import GroupKFold, StratifiedGroupKFold
 
 class RunModel(object):
     """
@@ -104,7 +104,6 @@ class RunModel(object):
         self.seed = seed
         self.scaler = scaler
         self.verbose = verbose
-        self.cv = self.get_cv()
         self.y_pred, self.score, self.model, self.oof, self.y_val, self.fi_df = self.fit()
 
     def train_model(self, train_set, val_set):
@@ -139,13 +138,16 @@ class RunModel(object):
         if (self.model == "lgb") & (self.task != "multiclass"):
             train_set = lgb.Dataset(x_train, y_train, categorical_feature=self.categoricals)
             val_set = lgb.Dataset(x_val, y_val, categorical_feature=self.categoricals)
+            
         elif (self.model == "nn") & (self.task == "multiclass"):
             ohe = OneHotEncoder(sparse=False, categories='auto')
             train_set = {'X': x_train, 'y': ohe.fit_transform(y_train.values.reshape(-1, 1))}
             val_set = {'X': x_val, 'y': ohe.transform(y_val.values.reshape(-1, 1))}
+            
         else:
             train_set = {'X': x_train, 'y': y_train}
             val_set = {'X': x_val, 'y': y_val}
+            
         return train_set, val_set
 
     def calc_metric(self, y_true, y_pred): 
@@ -155,8 +157,10 @@ class RunModel(object):
         """
         if self.task == "multiclass":
             return f1_score(y_true, y_pred, average="macro")
+        
         elif self.task == "binary":
             return roc_auc_score(y_true, y_pred) # log_loss
+        
         elif self.task == "regression":
             return np.sqrt(mean_squared_error(y_true, y_pred))
 
@@ -169,21 +173,22 @@ class RunModel(object):
         if self.cv_method == "KFold":
             cv = KFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df)
+        
         elif self.cv_method == "StratifiedKFold":
             cv = StratifiedKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target])
+        
         elif self.cv_method == "TimeSeriesSplit":
             cv = TimeSeriesSplit(max_train_size=None, n_splits=self.n_splits)
             return cv.split(self.train_df)
+        
         elif self.cv_method == "GroupKFold":
             cv = GroupKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target], self.group)
+        
         elif self.cv_method == "StratifiedGroupKFold":
             cv = StratifiedGroupKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
             return cv.split(self.train_df, self.train_df[self.target], self.group)
-        elif self.cv_method == "UnderBaggingKFold":
-            cv = UnderBaggingKFold(n_splits=self.n_splits, shuffle=True, random_state=self.seed)
-            return cv.split(self.train_df, self.train_df[self.target])
 
     def fit(self):
         """
@@ -210,29 +215,28 @@ class RunModel(object):
 
         # target encoding
         numerical_features = [f for f in self.features if f not in self.categoricals]
-        if self.target_encoding:
-            # copy cats
-            cats = self.categoricals.copy()
-            self.categoricals = []
-            numerical_features = numerical_features + cats
-            
+        if self.target_encoding:            
             # perform target encoding
-            for c in cats:
-                data_tmp = pd.DataFrame({c: self.train_df[c], 'target': self.train_df[self.target]})
-                tmp = np.repeat(np.nan, self.train_df.shape[0])
-
-                for train_idx, val_idx in self.cv:
+            for c in self.categoricals:
+                data_tmp = pd.DataFrame({c: self.train_df[c].values, 'target': self.train_df[self.target].values})
+                tmp = np.nan * np.ones(self.train_df.shape[0])
+                
+                cv = self.get_cv()
+                for fold, (train_idx, val_idx) in enumerate(cv):
                     target_mean = data_tmp.iloc[train_idx].groupby(c)['target'].mean()
-                    tmp[val_idx] = self.train_df[c].iloc[val_idx].map(target_mean)
-
+                    tmp[val_idx] = self.train_df[c].iloc[val_idx].map(target_mean).values
                 self.train_df[c] = tmp
-
+                
                 # replace categorical variable in test
                 target_mean = data_tmp.groupby(c)['target'].mean()
-                self.test_df[c] = self.test_df[c].map(target_mean)
-
-        # scaling, if necessary
-        if self.scaler is not None:
+                self.test_df.loc[:, c] = self.test_df[c].map(target_mean).values
+            
+            # no categoricals any more
+            numerical_features = self.features.copy()
+            self.categoricals = []
+        
+        # fill nan
+        if self.model not in ['lgb', 'catb', 'xgb']:
             # fill NaN (numerical features -> median, categorical features -> mode)
             self.train_df[numerical_features] = self.train_df[numerical_features].replace([np.inf, -np.inf], np.nan)
             self.test_df[numerical_features] = self.test_df[numerical_features].replace([np.inf, -np.inf], np.nan)
@@ -240,7 +244,9 @@ class RunModel(object):
             self.test_df[numerical_features] = self.test_df[numerical_features].fillna(self.test_df[numerical_features].median())
             self.train_df[self.categoricals] = self.train_df[self.categoricals].fillna(self.train_df[self.categoricals].mode().iloc[0])
             self.test_df[self.categoricals] = self.test_df[self.categoricals].fillna(self.test_df[self.categoricals].mode().iloc[0])
-
+      
+        # scaling, if necessary
+        if self.scaler is not None:
             # to normal
             pt = QuantileTransformer(n_quantiles=100, random_state=self.seed, output_distribution="normal")
             self.train_df[numerical_features] = pt.fit_transform(self.train_df[numerical_features])
@@ -261,12 +267,13 @@ class RunModel(object):
                 x_test = x_test[self.features]
         else:
             x_test = self.test_df[self.features]
-
+        
         # fitting with out of fold
-        for fold, (train_idx, val_idx) in enumerate(self.cv):
+        cv = self.get_cv()
+        for fold, (train_idx, val_idx) in enumerate(cv):
             # train test split
-            x_train, x_val = self.train_df.loc[train_idx, self.features], self.train_df.loc[val_idx, self.features]
-            y_train, y_val = self.train_df.loc[train_idx, self.target], self.train_df.loc[val_idx, self.target]
+            x_train, x_val = self.train_df[self.features].iloc[train_idx], self.train_df[self.features].iloc[val_idx]
+            y_train, y_val = self.train_df[self.target].iloc[train_idx], self.train_df[self.target].iloc[val_idx]
 
             if self.model == "nn":
                 x_train = [np.absolute(x_train[i]) for i in self.categoricals] + [x_train[numerical_features]]
