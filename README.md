@@ -24,7 +24,8 @@ Then run the model like the following:
 
 # fit LGB regression model
 model = RunModel(train_df, test_df, target, features,     
-        categoricals=categoricals, model="lgb", task="regression", n_splits=4, cv_method="KFold", 
+        categoricals=categoricals, target_encoding=False, model="lgb", 
+        task="regression", n_splits=4, cv_method="KFold", 
         group=None, seed=116, scaler=None)
 
 
