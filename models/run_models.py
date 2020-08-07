@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, Q
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error, mean_absolute_error, f1_score
 
+# model
 import lightgbm as lgb
 
 # visualize
@@ -40,13 +41,13 @@ class RunModel(object):
     :target: target column name (str)
     :features: list of feature names
     :categoricals: list of categorical feature names. Note that categoricals need to be in 'features'
-    :target_encoding: True or False
     :model: 'lgb', 'xgb', 'catb', 'linear', or 'nn'
+    :params: dictionary of hyperparameters. If empty dict {} is given, default hyperparams are used
     :task: 'regression', 'multiclass', or 'binary'
     :n_splits: K in KFold (default is 4)
     :cv_method: 'KFold', 'StratifiedKFold', 'TimeSeriesSplit', 'GroupKFold', 'StratifiedGroupKFold'
     :group: group feature name when GroupKFold or StratifiedGroupKFold are used
-    :parameter_tuning: True or False (not implemented for now)
+    :target_encoding: True or False
     :seed: seed (int)
     :scaler: None, 'MinMax', 'Standard'
     :verbose: bool
@@ -55,8 +56,8 @@ class RunModel(object):
 
     # fit LGB regression model
     model = RunModel(train_df, test_df, target, features, categoricals=categoricals,
-            target_encoding=False, model="lgb", task="regression", n_splits=4, cv_method="KFold", 
-            group=None, seed=1220, scaler=None)
+            model="lgb", params={}, task="regression", n_splits=4, cv_method="KFold", 
+            group=None, target_encoding=False, seed=1220, scaler=None)
     
     # save predictions on train, test data
     np.save("y_pred", model.y_pred)
@@ -64,8 +65,8 @@ class RunModel(object):
     """
 
     def __init__(self, train_df : pd.DataFrame, test_df : pd.DataFrame, target : str, features : List, categoricals: List=[],
-                target_encoding=False, model : str="lgb", task : str="regression", n_splits : int=4, cv_method : str="KFold", 
-                group : str=None, parameter_tuning=False, seed : int=1220, scaler : str=None, verbose=True):
+                model : str="lgb", params : Dict={}, task : str="regression", n_splits : int=4, cv_method : str="KFold", 
+                group : str=None, target_encoding=False, seed : int=1220, scaler : str=None, verbose=True):
 
         # display info
         print("##############################")
@@ -94,13 +95,13 @@ class RunModel(object):
         self.target = target
         self.features = features
         self.categoricals = categoricals
-        self.target_encoding = target_encoding
         self.model = model
+        self.params = params
         self.task = task
         self.n_splits = n_splits
         self.cv_method = cv_method
         self.group = group
-        self.parameter_tuning = parameter_tuning
+        self.target_encoding = target_encoding
         self.seed = seed
         self.scaler = scaler
         self.verbose = verbose
@@ -122,9 +123,6 @@ class RunModel(object):
 
         elif self.model == "linear": # linear model
             model, fi = lin_model(self, train_set, val_set)
-
-        elif self.model == "knn": # knn model
-            model, fi = knn_model(self, train_set, val_set)
 
         elif self.model == "nn": # neural network
             model, fi = nn_model(self, train_set, val_set)
