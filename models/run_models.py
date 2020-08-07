@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-import os, sys
+import os
+import sys
+import gc
+import re
 from typing import List, NoReturn, Union, Tuple, Optional, Text, Generic, Callable, Dict
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, OneHotEncoder, QuantileTransformer
 from sklearn.model_selection import KFold, StratifiedKFold, TimeSeriesSplit
@@ -23,7 +26,6 @@ from lgb_param_models import lgb_model
 from xgb_param_models import xgb_model
 from catb_param_models import catb_model
 from lin_param_models import lin_model
-from knn_param_models import knn_model
 from nn_param_models import nn_model
 mypath = os.getcwd()
 sys.path.append(mypath + '/code/')
@@ -318,7 +320,7 @@ class RunModel(object):
 
     def plot_feature_importance(self, rank_range=[1, 50]):
         """
-        function for plotting feature importance 
+        function for plotting feature importance (nothing is returned when the model is NN)
 
         :EXAMPLE:
         # fit LGB regression model
