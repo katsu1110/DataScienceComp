@@ -231,11 +231,12 @@ class RunModel(object):
                     
                     # smoothing
                     target_count = data_tmp.iloc[train_idx].groupby(c)['target'].count().reset_index() 
-                    target_count['target'] = target_count['target'].apply(lambda x : 1 / (1 + np.exp((-x-k) / f)))
-                    target_mean['target'] = target_mean['target'] * target_count['target'] + (1 - target_count['target']) * overall_mean
+                    target_count['target_0'] = target_count['target'].apply(lambda x : 1 / (1 + np.exp((-x-k) / f))
+                    target_count['target_1'] = target_count['target'].apply(lambda x : 1 - (1 / (1 + np.exp((-x-k) / f))))
+                    target_mean['target'] = target_mean['target'] * target_count['target_0'] + target_count['target_1'] * overall_mean
 
                     # allocate
-                    tmp[val_idx] = self.train_df[c].iloc[val_idx].map(target_mean.to_dict()).values
+                    tmp[val_idx] = self.train_df[c].iloc[val_idx].map(target_mean).values
                 self.train_df[c] = tmp
                 
                 # replace categorical variable in test

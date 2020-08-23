@@ -231,7 +231,7 @@ class RunModel(object):
                     
                     # smoothing
                     target_count = data_tmp.iloc[train_idx].groupby(c)['target'].count().reset_index() 
-                    target_count['target'] = target_count['target'].apply(lambda x : 1 / (1 + np.exp((-x-k) / f)))
+                    target_count['target'] = target_count['target'].apply(lambda x : 1 / (1 + np.exp((-x-k) / f))
                     target_mean['target'] = target_mean['target'] * target_count['target'] + (1 - target_count['target']) * overall_mean
 
                     # allocate
