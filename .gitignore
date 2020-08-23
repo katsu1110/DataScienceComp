@@ -6,3 +6,4 @@ catboost_info/
 *.csv
 *.pkl
 EDA.ipynb
+*.history
